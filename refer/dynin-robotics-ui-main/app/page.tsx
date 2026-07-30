@@ -695,6 +695,7 @@ function ParadigmFigure() {
     {
       key: "vlm",
       title: "Vision-Language Model",
+      examples: "(\u03c00.5, GR00T)",
       core: "Vision-Language Model",
       inputs: [
         {
@@ -735,6 +736,7 @@ function ParadigmFigure() {
     {
       key: "video",
       title: "Video Generation Model",
+      examples: "(Cosmos Policy, Mimic Video)",
       core: "Video Generation Model",
       inputs: [
         {
@@ -778,6 +780,7 @@ function ParadigmFigure() {
     {
       key: "unified",
       title: "Unified Model",
+      examples: "(Dynin-Robotics)",
       core: "Unified Model",
       inputs: [
         {
@@ -908,8 +911,8 @@ function ParadigmFigure() {
             </article>
             <div className="paradigm-card__caption">
               <h3>
-                {item.title}
-                {item.key === "unified" && " (Ours)"}
+                <strong>{item.title}</strong>
+                <span>{item.examples}</span>
               </h3>
             </div>
           </div>
@@ -2042,19 +2045,27 @@ function OriginalUnifiedOverview({
   active,
   objective,
   stage,
+  playbackId,
   onSelect,
 }: {
   active: ObjectiveKey;
   objective: Objective;
   stage: number;
+  playbackId: number;
   onSelect: (key: ObjectiveKey) => void;
 }) {
   return (
     <div className="overview-original-ui reveal">
-      <LegacyObjectiveSwitcher active={active} onSelect={onSelect} />
-      <div className="unified-workspace">
-        <LegacyObjectiveFigure objective={objective} stage={stage} />
+      <div className="overview-original-ui__figure-shell">
+        <div className="unified-workspace">
+          <LegacyObjectiveFigure
+            key={`${objective.key}-${playbackId}`}
+            objective={objective}
+            stage={stage}
+          />
+        </div>
       </div>
+      <LegacyObjectiveSwitcher active={active} onSelect={onSelect} />
     </div>
   );
 }
@@ -2178,19 +2189,28 @@ function ThemeToggle() {
 export default function Home() {
   const [activeObjective, setActiveObjective] =
     useState<ObjectiveKey>("policy");
+  const [overviewObjectiveKey, setOverviewObjectiveKey] =
+    useState<ObjectiveKey>("policy");
   const [stage, setStage] = useState(0);
   const [overviewStage, setOverviewStage] = useState(0);
+  const [overviewPlaybackId, setOverviewPlaybackId] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const overviewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const overviewTimerTokenRef = useRef(0);
   const objective = objectives[activeObjective];
+  const overviewObjective = objectives[overviewObjectiveKey];
   const trainingStage = Math.min(stage, 4);
 
   const selectObjective = useCallback((key: ObjectiveKey) => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    if (overviewTimerRef.current) clearTimeout(overviewTimerRef.current);
     setActiveObjective(key);
     setStage(0);
+  }, []);
+
+  const selectOverviewObjective = useCallback((key: ObjectiveKey) => {
+    overviewTimerTokenRef.current += 1;
+    setOverviewObjectiveKey(key);
     setOverviewStage(0);
+    setOverviewPlaybackId((value) => value + 1);
   }, []);
 
   useEffect(() => {
@@ -2213,18 +2233,18 @@ export default function Home() {
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const hasNarrativeAnimation =
-      overviewNarrativeObjectives.includes(activeObjective);
+      overviewNarrativeObjectives.includes(overviewObjectiveKey);
     const finalStage = hasNarrativeAnimation ? 10 : 5;
+    const timerToken = overviewTimerTokenRef.current + 1;
+    overviewTimerTokenRef.current = timerToken;
+
     if (reduced) {
-      overviewTimerRef.current = setTimeout(
-        () => setOverviewStage(finalStage),
-        0,
-      );
-      return () => {
-        if (overviewTimerRef.current) {
-          clearTimeout(overviewTimerRef.current);
+      const reducedTimer = window.setTimeout(() => {
+        if (overviewTimerTokenRef.current === timerToken) {
+          setOverviewStage(finalStage);
         }
-      };
+      }, 0);
+      return () => window.clearTimeout(reducedTimer);
     }
 
     const narrativeDurations = [
@@ -2235,17 +2255,22 @@ export default function Home() {
       ? narrativeDurations[overviewStage]
       : standardDurations[overviewStage];
 
-    overviewTimerRef.current = setTimeout(
-      () =>
-        setOverviewStage((value) =>
-          value >= finalStage ? 0 : value + 1,
-        ),
-      duration,
-    );
-    return () => {
-      if (overviewTimerRef.current) clearTimeout(overviewTimerRef.current);
-    };
-  }, [activeObjective, overviewStage]);
+    const overviewTimer = window.setTimeout(() => {
+      if (overviewTimerTokenRef.current !== timerToken) return;
+
+      if (overviewStage >= finalStage) {
+        const currentIndex = objectiveOrder.indexOf(overviewObjectiveKey);
+        const nextObjective =
+          objectiveOrder[(currentIndex + 1) % objectiveOrder.length];
+        setOverviewObjectiveKey(nextObjective);
+        setOverviewStage(0);
+        return;
+      }
+
+      setOverviewStage((value) => value + 1);
+    }, duration);
+    return () => window.clearTimeout(overviewTimer);
+  }, [overviewObjectiveKey, overviewPlaybackId, overviewStage]);
 
   useEffect(() => {
     const nodes = Array.from(document.querySelectorAll<HTMLElement>(".reveal"));
@@ -2338,19 +2363,20 @@ export default function Home() {
                 modes that combine block-wise action generation with optional
                 goal prediction, joint world-action denoising, or
                 world-model-based candidate reranking. Across LIBERO,
-                LIBERO-Plus, VLABench, and real-world FR3 manipulation,
-                Dynin-Robotics achieves strong performance and robustness,
-                while an accelerated dInfer path delivers up to 29.15× higher
-                effective action-token throughput with minimal prediction
-                quality degradation.
+                LIBERO-Plus, VLABench, and real-world FR3 manipulation,{" "}
+                <strong>Dynin-Robotics</strong> achieves strong performance and
+                robustness, while an accelerated dInfer path delivers up to
+                29.15× higher effective action-token throughput with minimal
+                prediction quality degradation.
               </p>
             </div>
 
             <OriginalUnifiedOverview
-              active={activeObjective}
-              objective={objective}
+              active={overviewObjectiveKey}
+              objective={overviewObjective}
               stage={overviewStage}
-              onSelect={selectObjective}
+              playbackId={overviewPlaybackId}
+              onSelect={selectOverviewObjective}
             />
           </div>
         </section>

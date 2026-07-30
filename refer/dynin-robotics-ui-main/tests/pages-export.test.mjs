@@ -79,6 +79,38 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     pageSource,
+    /const \[overviewPlaybackId, setOverviewPlaybackId\] = useState\(0\);/,
+  );
+  assert.match(
+    pageSource,
+    /const \[overviewObjectiveKey, setOverviewObjectiveKey\][\s\S]*?useState<ObjectiveKey>\("policy"\);/,
+  );
+  assert.match(
+    pageSource,
+    /setOverviewPlaybackId\(\(value\) => value \+ 1\);/,
+  );
+  assert.match(
+    pageSource,
+    /overviewTimerTokenRef\.current \+= 1;/,
+  );
+  assert.match(
+    pageSource,
+    /if \(overviewTimerTokenRef\.current !== timerToken\) return;/,
+  );
+  assert.match(
+    pageSource,
+    /objectiveOrder\[\(currentIndex \+ 1\) % objectiveOrder\.length\]/,
+  );
+  assert.match(
+    pageSource,
+    /setOverviewObjectiveKey\(nextObjective\);[\s\S]*?setOverviewStage\(0\);/,
+  );
+  assert.match(
+    pageSource,
+    /key=\{`\$\{objective\.key\}-\$\{playbackId\}`\}/,
+  );
+  assert.match(
+    pageSource,
     /1000, 850, 1050, 1050, 320, 200, 200, 200, 200, 200, 1800/,
   );
   assert.match(pageSource, /objective-condition-value-stack/);
@@ -162,6 +194,18 @@ test("ships a system-aware three-way theme toggle", async () => {
   );
   assert.match(
     css,
+    /\.overview-original-ui \.objective-switcher \{[\s\S]*?width: min\(100%, 640px\);[\s\S]*?height: 44px;/,
+  );
+  assert.match(
+    css,
+    /\.overview-original-ui__figure-shell \{[\s\S]*?padding: 52px clamp\(18px, 2vw, 28px\) 0;[\s\S]*?border-radius: 22px;[\s\S]*?background: var\(--bg-soft\);/,
+  );
+  assert.match(
+    pageSource,
+    /<div className="overview-original-ui__figure-shell">[\s\S]*?<div className="unified-workspace">[\s\S]*?<\/div>\s*<\/div>\s*<LegacyObjectiveSwitcher active=\{active\} onSelect=\{onSelect\} \/>/,
+  );
+  assert.match(
+    css,
     /\.overview-original-ui \.output-port__glyph i,[\s\S]*?aspect-ratio: 1;/,
   );
   assert.match(
@@ -192,6 +236,22 @@ test("ships a system-aware three-way theme toggle", async () => {
   assert.match(
     css,
     /\.objective-sequence-still \{[\s\S]*?background-image: var\(--sequence-frame-image\);/,
+  );
+  assert.match(
+    css,
+    /\.objective-output-value \{[\s\S]*?min-height: 66px;[\s\S]*?justify-content: center;/,
+  );
+  assert.match(
+    css,
+    /\.objective-output-value\.is-image \{\s+bottom: calc\(100% \+ 16px\);\s+width: 66px;\s+height: 66px;\s+min-height: 66px;/,
+  );
+  assert.match(
+    css,
+    /has-narrative-animation\.phase-0[\s\S]*?objective-condition-value\.is-sequence\.is-flight \{\s+opacity: 0;/,
+  );
+  assert.match(
+    css,
+    /:root\s+\.overview-original-ui\s+\.generation-stage\.has-narrative-animation\.phase-0\s+\.output-ports::after,[\s\S]*?\.generation-core::after \{[\s\S]*?background: var\(--overview-idle-route\);[\s\S]*?opacity: 1;/,
   );
   assert.match(
     pageSource,
