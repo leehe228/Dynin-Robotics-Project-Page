@@ -13,6 +13,23 @@ type Modality = "text" | "vision" | "action" | "sensor";
 type ConditionKey = "state" | "instruction" | "action" | "goal" | "sensor";
 type ConditionState = "required" | "optional" | "inactive";
 
+type ObjectiveInputValue =
+  | {
+      kind: "image";
+      asset: string;
+      label: string;
+    }
+  | {
+      kind: "sequence";
+      assets: string[];
+      label: string;
+    }
+  | {
+      kind: "text";
+      lines: string[];
+      tone: "text" | "action" | "sensor";
+    };
+
 type Objective = {
   key: ObjectiveKey;
   index: string;
@@ -115,12 +132,83 @@ const objectives: Record<ObjectiveKey, Objective> = {
   },
 };
 
+const overviewInputValues: Partial<
+  Record<ObjectiveKey, Partial<Record<ConditionKey, ObjectiveInputValue>>>
+> = {
+  policy: {
+    state: {
+      kind: "image",
+      asset: "/assets/overview/policy_state.png",
+      label: "Current robot state",
+    },
+    instruction: {
+      kind: "text",
+      lines: ["Put the glue stick inside the open drawer"],
+      tone: "text",
+    },
+    goal: {
+      kind: "image",
+      asset: "/assets/overview/policy_goal.png",
+      label: "Goal robot state",
+    },
+    sensor: {
+      kind: "text",
+      lines: ["0.01, 0.13, 0.63, 0.40, -0.25, -0.05"],
+      tone: "sensor",
+    },
+  },
+  world: {
+    state: {
+      kind: "image",
+      asset: "/assets/overview/wm_state.png",
+      label: "Observed world state",
+    },
+    instruction: {
+      kind: "text",
+      lines: ["Take the purple plush toy out of the bowl"],
+      tone: "text",
+    },
+    action: {
+      kind: "text",
+      lines: ["0.01, 0.13, 0.63,", "0.40, -0.25, -0.05"],
+      tone: "action",
+    },
+  },
+  goal: {
+    state: {
+      kind: "image",
+      asset: "/assets/overview/goal_state.png",
+      label: "Initial robot state",
+    },
+    instruction: {
+      kind: "text",
+      lines: ["Unfold the white towel on the table"],
+      tone: "text",
+    },
+  },
+  instruction: {
+    state: {
+      kind: "sequence",
+      assets: Array.from(
+        { length: 20 },
+        (_, index) =>
+          `/assets/overview/tu_states/tu_state_${index
+            .toString()
+            .padStart(2, "0")}.png`,
+      ),
+      label: "Observed task trajectory video",
+    },
+  },
+};
+
 const objectiveOrder: ObjectiveKey[] = [
   "policy",
   "world",
   "goal",
   "instruction",
 ];
+
+const overviewNarrativeObjectives: ObjectiveKey[] = [...objectiveOrder];
 
 const conditionSlots: Array<{
   key: ConditionKey;
@@ -1530,7 +1618,7 @@ function LegacyObjectiveSwitcher({
     <div
       className="objective-switcher"
       role="tablist"
-      aria-label="Reference implementation capability"
+      aria-label="Robot capability"
       style={
         {
           "--active-index": objectiveOrder.indexOf(active),
@@ -1551,6 +1639,62 @@ function LegacyObjectiveSwitcher({
         </button>
       ))}
     </div>
+  );
+}
+
+function ObjectiveFrameSequence({
+  assets,
+  label,
+}: {
+  assets: string[];
+  label: string;
+}) {
+  const [frameIndex, setFrameIndex] = useState(0);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const preloadFrames = assets.map((asset) => {
+      const image = new Image();
+      image.src = assetPath(asset);
+      return image.decode().catch(() => undefined);
+    });
+
+    void Promise.all(preloadFrames).then(() => {
+      if (!cancelled) {
+        setFrameIndex(0);
+        setIsReady(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [assets]);
+
+  useEffect(() => {
+    if (
+      !isReady ||
+      assets.length < 2 ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setFrameIndex((current) => (current + 1) % assets.length);
+    }, 100);
+
+    return () => window.clearInterval(timer);
+  }, [assets.length, isReady]);
+
+  return (
+    <img
+      className="objective-sequence-image"
+      src={assetPath(assets[frameIndex])}
+      alt={label}
+      draggable={false}
+    />
   );
 }
 
@@ -1578,12 +1722,13 @@ function LegacyObjectiveFigure({
     goal: "goal",
     instruction: "instruction",
   };
+  const tokenCount = 10;
   const outputOrders: Record<ConditionKey, number[]> = {
-    state: [4, 1, 5, 0, 3, 2],
-    instruction: [0, 1, 2, 3, 4, 5],
-    action: [0, 1, 2, 3, 4, 5],
-    goal: [2, 5, 0, 4, 1, 3],
-    sensor: [0, 1, 2, 3, 4, 5],
+    state: [7, 2, 9, 0, 5, 8, 1, 6, 3, 4],
+    instruction: [4, 9, 1, 7, 0, 6, 3, 8, 2, 5],
+    action: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    goal: [3, 9, 0, 7, 2, 8, 1, 6, 4, 5],
+    sensor: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
   };
   const outputKey = activeOutput[objective.key];
   const outputSlotIndex = conditionUnion.findIndex(
@@ -1591,17 +1736,24 @@ function LegacyObjectiveFigure({
   );
   const outputSlotPosition = (outputSlotIndex + 0.5) * 20;
   const outputModality = conditionUnion[outputSlotIndex].modality;
-  const outputCommitCounts =
-    outputKey === "instruction" || outputKey === "action"
-      ? [0, 2, 4, 6, 6]
-      : [0, 2, 3, 5, 6];
-  const committed = outputCommitCounts[stage];
-  const previousCommitted = stage === 0 ? 0 : outputCommitCounts[stage - 1];
+  const hasNarrativeAnimation =
+    overviewNarrativeObjectives.includes(objective.key);
+  const narrativeOutputCommitCounts = [
+    0, 0, 0, 0, 0, 2, 4, 6, 8, 10, 10,
+  ];
+  const outputCommitCounts = narrativeOutputCommitCounts;
+  const activeStage = Math.min(stage, outputCommitCounts.length - 1);
+  const committed = outputCommitCounts[activeStage];
+  const previousCommitted =
+    activeStage === 0 ? 0 : outputCommitCounts[activeStage - 1];
   const outputOrder = outputOrders[outputKey];
+  const inputValues = overviewInputValues[objective.key] ?? {};
 
   return (
     <figure
-      className={`generation-stage modality-${objective.targetModality}`}
+      className={`generation-stage objective-${objective.key} phase-${activeStage} modality-${objective.targetModality} ${
+        hasNarrativeAnimation ? "has-narrative-animation" : ""
+      }`}
       aria-label={`${objective.title} reference animation`}
     >
       <div className="output-ports" aria-label="Output modalities">
@@ -1625,7 +1777,9 @@ function LegacyObjectiveFigure({
           aria-hidden="true"
         />
         {conditionUnion.map((port) => {
-          const isActive = outputKey === port.key;
+          const isTarget = outputKey === port.key;
+          const isActive =
+            isTarget && (!hasNarrativeAnimation || activeStage >= 3);
           return (
             <div
               className={`output-port modality-${port.modality} ${
@@ -1633,11 +1787,60 @@ function LegacyObjectiveFigure({
               }`}
               key={port.key}
             >
+              {objective.key === "policy" && port.key === "action" ? (
+                <span
+                  className="objective-output-value is-action-vector"
+                  aria-hidden={activeStage !== 10}
+                >
+                  <span>-0.80, -0.55, 0.18,</span>
+                  <span>0.04, -0.15, 0.41</span>
+                </span>
+              ) : null}
+              {objective.key === "world" && port.key === "state" ? (
+                <span
+                  className="objective-output-value is-image"
+                  role="img"
+                  aria-label="Predicted world state"
+                  aria-hidden={activeStage !== 10}
+                  style={
+                    {
+                      "--objective-image": `url("${assetPath(
+                        "/assets/overview/wm_predict.png",
+                      )}")`,
+                    } as CSSProperties
+                  }
+                />
+              ) : null}
+              {objective.key === "goal" && port.key === "goal" ? (
+                <span
+                  className="objective-output-value is-image"
+                  role="img"
+                  aria-label="Predicted goal state"
+                  aria-hidden={activeStage !== 10}
+                  style={
+                    {
+                      "--objective-image": `url("${assetPath(
+                        "/assets/overview/goal_predict.png",
+                      )}")`,
+                    } as CSSProperties
+                  }
+                />
+              ) : null}
+              {objective.key === "instruction" &&
+              port.key === "instruction" ? (
+                <span
+                  className="objective-output-value is-instruction-text"
+                  aria-hidden={activeStage !== 10}
+                >
+                  <span>Push the faucet of the sink</span>
+                  <span>slightly to the left</span>
+                </span>
+              ) : null}
               <span
                 className={`output-port__glyph modality-${port.modality}`}
                 aria-hidden="true"
               >
-                {Array.from({ length: 6 }, (_, index) => {
+                {Array.from({ length: tokenCount }, (_, index) => {
                   const rank = outputOrder.indexOf(index);
                   const generated = isActive && rank < committed;
                   const isNew =
@@ -1652,7 +1855,8 @@ function LegacyObjectiveFigure({
                       style={
                         {
                           "--token-delay": `${
-                            Math.max(0, rank - previousCommitted) * 64
+                            Math.max(0, rank - previousCommitted) *
+                            (hasNarrativeAnimation ? 24 : 64)
                           }ms`,
                         } as CSSProperties
                       }
@@ -1714,7 +1918,7 @@ function LegacyObjectiveFigure({
                 className={`condition-token__glyph modality-${item.modality}`}
                 aria-hidden="true"
               >
-                {Array.from({ length: 6 }, (_, index) => (
+                {Array.from({ length: tokenCount }, (_, index) => (
                   <i key={index} />
                 ))}
               </span>
@@ -1724,25 +1928,134 @@ function LegacyObjectiveFigure({
         })}
       </div>
 
+      {hasNarrativeAnimation ? (
+        <div
+          className="objective-condition-values"
+          aria-label={`${objective.title} input values`}
+        >
+          {conditionUnion.map((item) => {
+            const value = inputValues[item.key];
+            if (!value) {
+              return (
+                <span
+                  className="objective-condition-value-spacer"
+                  aria-hidden="true"
+                  key={item.key}
+                />
+              );
+            }
+
+            const isVisualValue =
+              value.kind === "image" || value.kind === "sequence";
+            const valueClass =
+              value.kind === "text"
+                ? `is-${value.tone}`
+                : `is-image ${
+                    value.kind === "sequence" ? "is-sequence" : ""
+                  }`;
+            const valueStyle =
+              value.kind === "image"
+                ? ({
+                    "--objective-image": `url("${assetPath(value.asset)}")`,
+                  } as CSSProperties)
+                : undefined;
+            const renderValueContent = (layer: "base" | "flight") => {
+              if (value.kind === "text") {
+                return value.lines.map((line) => (
+                  <span key={line}>{line}</span>
+                ));
+              }
+              if (value.kind === "sequence") {
+                if (layer === "flight") {
+                  const stillAsset =
+                    value.assets[Math.floor(value.assets.length / 2)];
+                  return (
+                    <i
+                      className="objective-sequence-still"
+                      style={
+                        {
+                          "--sequence-frame-image": `url("${assetPath(
+                            stillAsset,
+                          )}")`,
+                        } as CSSProperties
+                      }
+                      aria-hidden="true"
+                    />
+                  );
+                }
+                return (
+                  <ObjectiveFrameSequence
+                    assets={value.assets}
+                    label={value.label}
+                  />
+                );
+              }
+              return null;
+            };
+
+            return (
+              <span
+                className={`objective-condition-value-stack ${valueClass}`}
+                key={item.key}
+              >
+                <span
+                  className={`objective-condition-value ${valueClass} is-base`}
+                  role={isVisualValue ? "img" : undefined}
+                  aria-label={isVisualValue ? value.label : undefined}
+                  style={valueStyle}
+                >
+                  {renderValueContent("base")}
+                </span>
+                <span
+                  className={`objective-condition-value ${valueClass} is-flight`}
+                  aria-hidden="true"
+                  style={valueStyle}
+                >
+                  {renderValueContent("flight")}
+                </span>
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
+
       <div className="generation-progress">
         <div>
           <span>Generation</span>
-          <small>
-            {committed} / 6 · pass {stage + 1}
-          </small>
         </div>
         <div
           className="generation-progress__track"
           role="progressbar"
           aria-label={`${objective.title} reference generation`}
           aria-valuemin={0}
-          aria-valuemax={6}
+          aria-valuemax={tokenCount}
           aria-valuenow={committed}
         >
-          <span style={{ width: `${(committed / 6) * 100}%` }} />
+          <span style={{ width: `${(committed / tokenCount) * 100}%` }} />
         </div>
       </div>
     </figure>
+  );
+}
+
+function OriginalUnifiedOverview({
+  active,
+  objective,
+  stage,
+  onSelect,
+}: {
+  active: ObjectiveKey;
+  objective: Objective;
+  stage: number;
+  onSelect: (key: ObjectiveKey) => void;
+}) {
+  return (
+    <div className="overview-original-ui reveal">
+      <LegacyObjectiveSwitcher active={active} onSelect={onSelect} />
+      <div className="unified-workspace">
+        <LegacyObjectiveFigure objective={objective} stage={stage} />
+      </div>
+    </div>
   );
 }
 
@@ -1866,13 +2179,18 @@ export default function Home() {
   const [activeObjective, setActiveObjective] =
     useState<ObjectiveKey>("policy");
   const [stage, setStage] = useState(0);
+  const [overviewStage, setOverviewStage] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const overviewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const objective = objectives[activeObjective];
+  const trainingStage = Math.min(stage, 4);
 
   const selectObjective = useCallback((key: ObjectiveKey) => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    if (overviewTimerRef.current) clearTimeout(overviewTimerRef.current);
     setActiveObjective(key);
     setStage(0);
+    setOverviewStage(0);
   }, []);
 
   useEffect(() => {
@@ -1891,6 +2209,43 @@ export default function Home() {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [activeObjective, stage]);
+
+  useEffect(() => {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const hasNarrativeAnimation =
+      overviewNarrativeObjectives.includes(activeObjective);
+    const finalStage = hasNarrativeAnimation ? 10 : 5;
+    if (reduced) {
+      overviewTimerRef.current = setTimeout(
+        () => setOverviewStage(finalStage),
+        0,
+      );
+      return () => {
+        if (overviewTimerRef.current) {
+          clearTimeout(overviewTimerRef.current);
+        }
+      };
+    }
+
+    const narrativeDurations = [
+      1000, 850, 1050, 1050, 320, 200, 200, 200, 200, 200, 1800,
+    ];
+    const standardDurations = [760, 760, 760, 760, 760, 1250];
+    const duration = hasNarrativeAnimation
+      ? narrativeDurations[overviewStage]
+      : standardDurations[overviewStage];
+
+    overviewTimerRef.current = setTimeout(
+      () =>
+        setOverviewStage((value) =>
+          value >= finalStage ? 0 : value + 1,
+        ),
+      duration,
+    );
+    return () => {
+      if (overviewTimerRef.current) clearTimeout(overviewTimerRef.current);
+    };
+  }, [activeObjective, overviewStage]);
 
   useEffect(() => {
     const nodes = Array.from(document.querySelectorAll<HTMLElement>(".reveal"));
@@ -1940,63 +2295,67 @@ export default function Home() {
       <main id="main-content">
         <section className="hero" id="top">
           <div className="hero__copy reveal is-visible">
-            <p className="eyebrow">Research project · AIDAS Lab, Seoul National University</p>
+            <time className="hero__date" dateTime="2026-08-01">
+              August 01, 2026
+            </time>
             <h1>Dynin-Robotics</h1>
-            <h2>
-              Omnimodal Unified Diffusion
-              <br />
-              Vision-Language-Action Model
-            </h2>
             <p className="hero__summary">
-              Generalist robot policies must connect task language, visual
-              observations, future consequences, and executable actions.
-              Dynin-Robotics represents these variables as a partially observed
-              multimodal trajectory and learns their conditional relationships
-              with one masked-diffusion backbone.
+              Dynin-Robotics is an{" "}
+              <strong>
+                omnimodal unified diffusion vision-language-action model
+              </strong>{" "}
+              that formulates language, visual dynamics, goal states, and robot
+              actions as conditional targets of a single masked-diffusion
+              backbone.
             </p>
-            <p className="hero__thesis">
-              One shared trajectory, four observed–masked views: policy, world
-              modeling, goal-state prediction, and task understanding.
-            </p>
-            <div className="hero__authors">
-              <span>Hoeun Lee</span>
-              <span>Jaeyoung Do</span>
-              <span>2026</span>
-            </div>
             <div className="hero__links">
-              <a href={assetPath("/paper.pdf")}>Read the paper ↗</a>
-              <a href="#overview">Method overview ↓</a>
+              <a href={assetPath("/paper.pdf")}>Paper</a>
+              <a href="#model">Model</a>
+              <a href="#resources">Code</a>
             </div>
           </div>
+        </section>
 
-          <div className="hero__figure reveal is-visible">
-            <div className="figure-heading">
-              <div>
-                <span>Figure 1 · conditional query view</span>
-                <strong>{objective.title}</strong>
-              </div>
-              <small>
-                pass {stage + 1}/5 · target {objective.targetLabel}
-              </small>
+        <section
+          className="section section--project-overview"
+          id="overview"
+        >
+          <div className="container">
+            <div className="project-overview__intro reveal">
+              <h2>Overview</h2>
+              <p>
+                <strong>Dynin-Robotics</strong> is an omnimodal
+                vision-language-action model built on the masked-diffusion
+                model (MDM) backbone of Dynin-Omni. It extends a shared discrete
+                token space to language, visual observations and future states,
+                robot actions, and optional sensor or metadata context,
+                representing them as variables of one partially observed
+                trajectory. Through unified objective training, a single model
+                learns policy generation, action-conditioned world modeling,
+                instruction understanding, and goal-state prediction by
+                changing only which spans are visible and which are denoised.
+                At inference time, this shared interface supports six operating
+                modes that combine block-wise action generation with optional
+                goal prediction, joint world-action denoising, or
+                world-model-based candidate reranking. Across LIBERO,
+                LIBERO-Plus, VLABench, and real-world FR3 manipulation,
+                Dynin-Robotics achieves strong performance and robustness,
+                while an accelerated dInfer path delivers up to 29.15× higher
+                effective action-token throughput with minimal prediction
+                quality degradation.
+              </p>
             </div>
-            <div
-              className="figure-scroll"
-              role="tabpanel"
-              id={`hero-objective-${activeObjective}`}
-              aria-labelledby={`hero-objective-tab-${activeObjective}`}
-              tabIndex={0}
-            >
-              <UnifiedQueryFigure objective={objective} stage={stage} compact />
-            </div>
-            <ObjectiveTabs
+
+            <OriginalUnifiedOverview
               active={activeObjective}
+              objective={objective}
+              stage={overviewStage}
               onSelect={selectObjective}
-              controlsPrefix="hero-objective"
             />
           </div>
         </section>
 
-        <section className="section section--overview" id="overview">
+        <section className="section section--motivation">
           <div className="container">
             <SectionLead
               index="01"
@@ -2094,7 +2453,7 @@ export default function Home() {
                 <div className="figure-scroll">
                   <UnifiedQueryFigure
                     objective={objective}
-                    stage={stage}
+                    stage={trainingStage}
                     caption="Figure 4 training-objective mapping. Optional conditions use dashed borders; inactive variables remain visible only to preserve a stable comparison grid."
                   />
                 </div>
@@ -2104,12 +2463,16 @@ export default function Home() {
                     role="progressbar"
                     aria-valuemin={0}
                     aria-valuemax={4}
-                    aria-valuenow={stage}
+                    aria-valuenow={trainingStage}
                     aria-label={`${objective.title} denoising progress`}
                   >
-                    <i style={{ width: `${(stage / 4) * 100}%` }} />
+                    <i style={{ width: `${(trainingStage / 4) * 100}%` }} />
                   </div>
-                  <b>{stage === 4 ? "complete" : `pass ${stage + 1}`}</b>
+                  <b>
+                    {trainingStage === 4
+                      ? "complete"
+                      : `pass ${trainingStage + 1}`}
+                  </b>
                 </div>
               </div>
             </div>
@@ -2235,7 +2598,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="paper-section">
+        <section className="paper-section" id="resources">
           <div className="container">
             <div className="paper-section__copy reveal">
               <p className="eyebrow">Paper and resources</p>

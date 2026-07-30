@@ -9,8 +9,9 @@
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
     "build:pages": "NEXT_PUBLIC_BASE_PATH=/Dynin-Robotics-Project-Page NEXT_PUBLIC_SITE_URL=https://leehe228.github.io/Dynin-Robotics-Project-Page/ GITHUB_PAGES=true next build",
+    "preview:pages": "node scripts/serve-pages.mjs",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "test": "npm run build:pages && node --test tests/pages-export.test.mjs",
+    "test": "npm run build:pages && node --test tests/*.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern 'app/* 2.*'",
     "db:generate": "drizzle-kit generate"
   },

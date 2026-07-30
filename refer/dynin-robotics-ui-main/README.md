@@ -29,4 +29,15 @@ The GitHub Pages deployment uses a separate static export:
 npm run build:pages
 ```
 
+To preview that export locally with the same base path used by GitHub Pages:
+
+```bash
+npm test
+npm run preview:pages
+```
+
+The preview is available at http://localhost:3000. It maps both the root URL and
+`/Dynin-Robotics-Project-Page/` to the exported site so CSS, JavaScript, fonts,
+and media resolve exactly as they do after deployment.
+
 Every push to `main` is deployed automatically by GitHub Actions.
