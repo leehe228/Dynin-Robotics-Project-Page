@@ -1380,6 +1380,45 @@ function RealWorldPlaceholders() {
   );
 }
 
+function ThemeToggle() {
+  useEffect(() => {
+    const systemTheme = window.matchMedia("(prefers-color-scheme: light)");
+    const syncWithSystem = (event: MediaQueryListEvent) => {
+      const saved = window.localStorage.getItem("dynin-color-theme");
+      if (saved === "light" || saved === "dark") return;
+      const theme = event.matches ? "light" : "dark";
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.style.colorScheme = theme;
+    };
+
+    systemTheme.addEventListener("change", syncWithSystem);
+    return () => systemTheme.removeEventListener("change", syncWithSystem);
+  }, []);
+
+  const toggleTheme = () => {
+    const current =
+      document.documentElement.dataset.theme === "light" ? "light" : "dark";
+    const next = current === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    document.documentElement.style.colorScheme = next;
+    window.localStorage.setItem("dynin-color-theme", next);
+  };
+
+  return (
+    <button
+      className="theme-toggle"
+      type="button"
+      onClick={toggleTheme}
+      aria-label="Toggle light and dark color theme"
+    >
+      <i className="theme-toggle__icon" aria-hidden="true" />
+      <span className="theme-toggle__to-light">Light mode</span>
+      <span className="theme-toggle__to-dark">Dark mode</span>
+      <small>Theme</small>
+    </button>
+  );
+}
+
 export default function Home() {
   const [activeObjective, setActiveObjective] =
     useState<ObjectiveKey>("policy");
@@ -1795,6 +1834,7 @@ export default function Home() {
             <strong>Dynin-Robotics</strong>
             <p>AIDAS Lab · Seoul National University</p>
           </div>
+          <ThemeToggle />
           <div>
             <span>Hoeun Lee · Jaeyoung Do</span>
             <span>© 2026</span>

@@ -39,6 +39,24 @@ const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const socialImage = siteUrl
   ? new URL(`${basePath}/og.png`, siteUrl).toString()
   : undefined;
+const themeScript = `
+  (() => {
+    try {
+      const saved = localStorage.getItem("dynin-color-theme");
+      const theme =
+        saved === "light" || saved === "dark"
+          ? saved
+          : matchMedia("(prefers-color-scheme: light)").matches
+            ? "light"
+            : "dark";
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.style.colorScheme = theme;
+    } catch {
+      document.documentElement.dataset.theme = "dark";
+      document.documentElement.style.colorScheme = "dark";
+    }
+  })();
+`;
 
 export const metadata: Metadata = {
   ...(siteUrl ? { metadataBase: new URL(siteUrl) } : {}),
@@ -67,7 +85,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={pretendard.variable}>
+    <html
+      lang="en"
+      className={pretendard.variable}
+      suppressHydrationWarning
+    >
+      <head>
+        <meta name="color-scheme" content="light dark" />
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>{children}</body>
     </html>
   );

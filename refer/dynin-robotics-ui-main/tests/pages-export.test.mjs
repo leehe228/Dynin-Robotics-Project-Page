@@ -68,3 +68,13 @@ test("keeps qualitative evidence as native empty media slots", async () => {
   assert.doesNotMatch(html, /assets\/paper\//);
   assert.match(html, /Media intentionally omitted in this draft/);
 });
+
+test("ships a system-aware light and dark theme toggle", async () => {
+  const html = await readFile(indexUrl, "utf8");
+
+  assert.match(html, /dynin-color-theme/);
+  assert.match(html, /prefers-color-scheme: light/);
+  assert.match(html, /Toggle light and dark color theme/);
+  assert.match(html, /Light mode/);
+  assert.match(html, /Dark mode/);
+});
