@@ -584,8 +584,6 @@ function UnifiedQueryFigure({
 }
 
 function SectionLead({
-  index,
-  eyebrow,
   title,
   body,
 }: {
@@ -596,10 +594,6 @@ function SectionLead({
 }) {
   return (
     <div className="section-lead reveal">
-      <div className="section-lead__meta">
-        <span>{index}</span>
-        <p>{eyebrow}</p>
-      </div>
       <div className="section-lead__copy">
         <h2>{title}</h2>
         <p>{body}</p>
@@ -612,56 +606,143 @@ function ParadigmFigure() {
   const paradigms = [
     {
       key: "vlm",
-      number: "(a)",
       title: "Vision-Language Model",
-      note: "Language-conditioned policy",
       core: "Vision-Language Model",
-      expert: "Latent condition → action expert",
       inputs: [
-        { label: "States", modality: "vision" as const, symbol: "V", active: true },
-        { label: "Instruction", modality: "text" as const, symbol: "T", active: true },
-        { label: "Action", modality: "action" as const, symbol: "A", active: false },
+        {
+          label: "States",
+          modality: "vision" as const,
+          symbol: "V",
+          count: 2,
+          slot: "states",
+        },
+        {
+          label: "Instructions",
+          modality: "text" as const,
+          symbol: "T",
+          count: 1,
+          slot: "instructions",
+        },
       ],
       outputs: [
-        { label: "Text", modality: "text" as const, symbol: "T", active: true },
-        { label: "Future state", modality: "vision" as const, symbol: "V", active: false },
-        { label: "Action", modality: "action" as const, symbol: "A", active: true },
+        {
+          label: "Text",
+          modality: "text" as const,
+          symbol: "T",
+          count: 1,
+          slot: "text",
+          optional: true,
+        },
+        {
+          label: "Actions",
+          modality: "action" as const,
+          symbol: "A",
+          count: 2,
+          slot: "actions",
+          optional: false,
+        },
       ],
+      masks: [{ count: 2, slot: "generation" }],
     },
     {
       key: "video",
-      number: "(b)",
       title: "Video Generation Model",
-      note: "Video / world-model policy",
       core: "Video Generation Model",
-      expert: "Latent condition → action expert",
       inputs: [
-        { label: "States", modality: "vision" as const, symbol: "V", active: true },
-        { label: "Instruction", modality: "text" as const, symbol: "T", active: true },
-        { label: "Action", modality: "action" as const, symbol: "A", active: false },
+        {
+          label: "States",
+          modality: "vision" as const,
+          symbol: "V",
+          count: 2,
+          slot: "states",
+        },
+        {
+          label: "Instructions",
+          modality: "text" as const,
+          symbol: "T",
+          count: 1,
+          slot: "instructions",
+        },
       ],
       outputs: [
-        { label: "Text", modality: "text" as const, symbol: "T", active: false },
-        { label: "Next state", modality: "vision" as const, symbol: "V", active: true },
-        { label: "Action", modality: "action" as const, symbol: "A", active: true },
+        {
+          label: "Next states",
+          modality: "vision" as const,
+          symbol: "V",
+          count: 2,
+          slot: "future",
+          optional: true,
+        },
+        {
+          label: "Actions",
+          modality: "action" as const,
+          symbol: "A",
+          count: 2,
+          slot: "actions",
+          optional: false,
+        },
+      ],
+      masks: [
+        { count: 2, slot: "future-generation" },
+        { count: 2, slot: "action-generation" },
       ],
     },
     {
       key: "unified",
-      number: "(c)",
       title: "Unified Model",
-      note: "Dynin-Robotics",
-      core: "One shared masked-diffusion model",
-      expert: "",
+      core: "Unified Model",
       inputs: [
-        { label: "States", modality: "vision" as const, symbol: "V", active: true },
-        { label: "Instruction", modality: "text" as const, symbol: "T", active: true },
-        { label: "Action", modality: "action" as const, symbol: "A", active: true },
+        {
+          label: "States",
+          modality: "vision" as const,
+          symbol: "V",
+          count: 2,
+          slot: "states",
+        },
+        {
+          label: "Instructions",
+          modality: "text" as const,
+          symbol: "T",
+          count: 1,
+          slot: "instructions",
+        },
+        {
+          label: "Action",
+          modality: "action" as const,
+          symbol: "A",
+          count: 2,
+          slot: "action-input",
+        },
       ],
       outputs: [
-        { label: "Text", modality: "text" as const, symbol: "T", active: true },
-        { label: "Future state", modality: "vision" as const, symbol: "V", active: true },
-        { label: "Action", modality: "action" as const, symbol: "A", active: true },
+        {
+          label: "Text",
+          modality: "text" as const,
+          symbol: "T",
+          count: 1,
+          slot: "text",
+          optional: false,
+        },
+        {
+          label: "Future states",
+          modality: "vision" as const,
+          symbol: "V",
+          count: 2,
+          slot: "future",
+          optional: false,
+        },
+        {
+          label: "Actions",
+          modality: "action" as const,
+          symbol: "A",
+          count: 2,
+          slot: "actions",
+          optional: false,
+        },
+      ],
+      masks: [
+        { count: 1, slot: "pre-action" },
+        { count: 4, slot: "generation" },
       ],
     },
   ];
@@ -670,80 +751,131 @@ function ParadigmFigure() {
     <figure className="paradigm-figure reveal" aria-label="Modeling paradigms">
       <div className="paradigm-grid">
         {paradigms.map((item) => (
-          <article className={`paradigm-card is-${item.key}`} key={item.key}>
-            <header>
-              <span>{item.number}</span>
-              <div>
-                <h3>{item.title}</h3>
-                <p>{item.note}</p>
+          <div className={`paradigm-item is-${item.key}`} key={item.key}>
+            <article className={`paradigm-card is-${item.key}`}>
+              <div className="paradigm-card__zones" aria-hidden="true">
+                {item.key !== "video" && <span>Understanding</span>}
+                {item.key !== "vlm" && <span>Generation</span>}
+                {item.key === "vlm" && <span>Generation</span>}
               </div>
-            </header>
-            <div className="paradigm-card__outputs">
-              {item.outputs.map((output) => (
-                <div
-                  className={`modality-${output.modality} ${
-                    output.active ? "is-active" : "is-inactive"
-                  }`}
-                  key={output.label}
-                >
-                  <small>{output.label}</small>
-                  <TokenStrip
-                    modality={output.modality}
-                    symbol={output.symbol}
-                    active={output.active}
-                    count={2}
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="paradigm-card__core">
-              <div className="paradigm-card__primary">
-                <strong>{item.core}</strong>
-                <span>
-                  {item.key === "unified"
-                    ? "shared parameters"
-                    : "primary representation model"}
-                </span>
-              </div>
-              {item.expert && (
-                <>
-                  <i className="paradigm-card__latent" aria-hidden="true">
-                    latent
-                  </i>
-                  <div className="paradigm-card__expert">
-                    <strong>Action expert</strong>
-                    <span>{item.expert}</span>
+              <div className="paradigm-card__outputs">
+                {item.outputs.map((output) => (
+                  <div
+                    className={`modality-${output.modality} is-active is-slot-${output.slot}`}
+                    key={`${item.key}-${output.slot}`}
+                  >
+                    <small>{output.label}</small>
+                    <TokenStrip
+                      modality={output.modality}
+                      symbol={output.symbol}
+                      optional={output.optional}
+                      count={output.count}
+                    />
                   </div>
-                </>
-              )}
-            </div>
-            <div className="paradigm-card__inputs">
-              {item.inputs.map((input) => (
-                <div
-                  className={`modality-${input.modality} ${
-                    input.active ? "is-active" : "is-inactive"
-                  }`}
-                  key={input.label}
-                >
-                  <TokenStrip
-                    modality={input.modality}
-                    symbol={input.symbol}
-                    active={input.active}
-                    count={2}
-                  />
-                  <small>{input.label}</small>
+                ))}
+              </div>
+              <div className="paradigm-card__core">
+                <div className="paradigm-card__primary">
+                  <strong>{item.core}</strong>
                 </div>
-              ))}
+                {item.key !== "unified" && (
+                  <>
+                    <i className="paradigm-card__latent" aria-hidden="true" />
+                    <div className="paradigm-card__expert">
+                      <strong>Expert</strong>
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="paradigm-card__inputs">
+                {item.inputs.map((input) => (
+                  <div
+                    className={`modality-${input.modality} is-active is-slot-${input.slot}`}
+                    key={`${item.key}-${input.slot}`}
+                  >
+                    <TokenStrip
+                      modality={input.modality}
+                      symbol={input.symbol}
+                      count={input.count}
+                    />
+                    <small>{input.label}</small>
+                  </div>
+                ))}
+                {item.masks.map((mask) => (
+                  <div
+                    className={`paradigm-card__mask is-slot-${mask.slot}`}
+                    aria-label={`${mask.count} masked token positions`}
+                    key={`${item.key}-mask-${mask.slot}`}
+                  >
+                    <TokenStrip
+                      modality="text"
+                      symbol=""
+                      masked
+                      count={mask.count}
+                      resolved={0}
+                    />
+                  </div>
+                ))}
+              </div>
+            </article>
+            <div className="paradigm-card__caption">
+              <h3>
+                {item.title}
+                {item.key === "unified" && " (Ours)"}
+              </h3>
             </div>
-          </article>
+          </div>
         ))}
       </div>
-      <figcaption>
-        Figure 2, reconstructed in HTML/CSS. The comparison preserves the
-        paper&apos;s distinction: VLM policies emphasize semantic grounding,
-        video models emphasize future-state dynamics, and Dynin-Robotics exposes
-        text, visual states, and actions as variables of one shared model.
-      </figcaption>
+      <div className="paradigm-legend-popover">
+        <button type="button" aria-label="Figure 2 token legend">
+          <span aria-hidden="true">ⓘ</span>
+        </button>
+        <div className="paradigm-legend-popover__panel">
+          <strong>Figure key</strong>
+          <ul className="paradigm-legend" aria-label="Figure token legend">
+            <li>
+              <i
+                className="paradigm-legend__swatch is-text"
+                aria-hidden="true"
+              />
+              <span>Text</span>
+            </li>
+            <li>
+              <i
+                className="paradigm-legend__swatch is-vision"
+                aria-hidden="true"
+              />
+              <span>Vision</span>
+            </li>
+            <li>
+              <i
+                className="paradigm-legend__swatch is-action"
+                aria-hidden="true"
+              />
+              <span>Action</span>
+            </li>
+            <li>
+              <i
+                className="paradigm-legend__swatch is-mask"
+                aria-hidden="true"
+              />
+              <span>Noise / Mask</span>
+            </li>
+            <li>
+              <i
+                className="paradigm-legend__swatch is-optional"
+                aria-hidden="true"
+              />
+              <span>Optional</span>
+            </li>
+            <li>
+              <i className="paradigm-legend__latent" aria-hidden="true" />
+              <span>Latent condition</span>
+            </li>
+          </ul>
+        </div>
+      </div>
     </figure>
   );
 }
@@ -1380,12 +1512,313 @@ function RealWorldPlaceholders() {
   );
 }
 
+function LegacyObjectiveSwitcher({
+  active,
+  onSelect,
+}: {
+  active: ObjectiveKey;
+  onSelect: (key: ObjectiveKey) => void;
+}) {
+  const labels: Record<ObjectiveKey, string> = {
+    policy: "Policy",
+    world: "World Modeling",
+    goal: "Goal State\nPrediction",
+    instruction: "Task Understanding",
+  };
+
+  return (
+    <div
+      className="objective-switcher"
+      role="tablist"
+      aria-label="Reference implementation capability"
+      style={
+        {
+          "--active-index": objectiveOrder.indexOf(active),
+        } as CSSProperties
+      }
+    >
+      <span className="objective-switcher__plate" aria-hidden="true" />
+      {objectiveOrder.map((key) => (
+        <button
+          type="button"
+          role="tab"
+          aria-selected={active === key}
+          className={active === key ? "is-active" : ""}
+          onClick={() => onSelect(key)}
+          key={key}
+        >
+          {labels[key]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function LegacyObjectiveFigure({
+  objective,
+  stage,
+}: {
+  objective: Objective;
+  stage: number;
+}) {
+  const conditionUnion: Array<{
+    key: ConditionKey;
+    label: string;
+    modality: Modality;
+  }> = [
+    { key: "state", label: "State", modality: "vision" },
+    { key: "instruction", label: "Instruction", modality: "text" },
+    { key: "action", label: "Action", modality: "action" },
+    { key: "goal", label: "Goal", modality: "vision" },
+    { key: "sensor", label: "Sensor", modality: "sensor" },
+  ];
+  const activeOutput: Record<ObjectiveKey, ConditionKey> = {
+    policy: "action",
+    world: "state",
+    goal: "goal",
+    instruction: "instruction",
+  };
+  const outputOrders: Record<ConditionKey, number[]> = {
+    state: [4, 1, 5, 0, 3, 2],
+    instruction: [0, 1, 2, 3, 4, 5],
+    action: [0, 1, 2, 3, 4, 5],
+    goal: [2, 5, 0, 4, 1, 3],
+    sensor: [0, 1, 2, 3, 4, 5],
+  };
+  const outputKey = activeOutput[objective.key];
+  const outputSlotIndex = conditionUnion.findIndex(
+    (item) => item.key === outputKey,
+  );
+  const outputSlotPosition = (outputSlotIndex + 0.5) * 20;
+  const outputModality = conditionUnion[outputSlotIndex].modality;
+  const outputCommitCounts =
+    outputKey === "instruction" || outputKey === "action"
+      ? [0, 2, 4, 6, 6]
+      : [0, 2, 3, 5, 6];
+  const committed = outputCommitCounts[stage];
+  const previousCommitted = stage === 0 ? 0 : outputCommitCounts[stage - 1];
+  const outputOrder = outputOrders[outputKey];
+
+  return (
+    <figure
+      className={`generation-stage modality-${objective.targetModality}`}
+      aria-label={`${objective.title} reference animation`}
+    >
+      <div className="output-ports" aria-label="Output modalities">
+        <span
+          className={`output-route-highlight modality-${outputModality}`}
+          style={
+            {
+              "--route-start": `${Math.min(50, outputSlotPosition)}%`,
+              "--route-width": `${Math.abs(50 - outputSlotPosition)}%`,
+            } as CSSProperties
+          }
+          aria-hidden="true"
+        />
+        <span
+          className={`output-flow-comet modality-${outputModality}`}
+          style={
+            {
+              "--output-slot": `${outputSlotPosition}%`,
+            } as CSSProperties
+          }
+          aria-hidden="true"
+        />
+        {conditionUnion.map((port) => {
+          const isActive = outputKey === port.key;
+          return (
+            <div
+              className={`output-port modality-${port.modality} ${
+                isActive ? "is-active" : ""
+              }`}
+              key={port.key}
+            >
+              <span
+                className={`output-port__glyph modality-${port.modality}`}
+                aria-hidden="true"
+              >
+                {Array.from({ length: 6 }, (_, index) => {
+                  const rank = outputOrder.indexOf(index);
+                  const generated = isActive && rank < committed;
+                  const isNew =
+                    isActive &&
+                    rank >= previousCommitted &&
+                    rank < committed;
+                  return (
+                    <i
+                      className={`${generated ? "is-generated" : "is-pending"} ${
+                        isNew ? "is-new" : ""
+                      }`}
+                      style={
+                        {
+                          "--token-delay": `${
+                            Math.max(0, rank - previousCommitted) * 64
+                          }ms`,
+                        } as CSSProperties
+                      }
+                      key={index}
+                    />
+                  );
+                })}
+              </span>
+              <small>{port.label}</small>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="generation-core">
+        <span>Dynin-Robotics</span>
+      </div>
+
+      <div className="condition-union" aria-label="Condition token union">
+        {conditionUnion.map((item, index) => {
+          const state = objective.conditions[item.key];
+          const slotPosition = (index + 0.5) * 20;
+          return state !== "inactive" ? (
+            <span
+              className={`condition-route-highlight modality-${item.modality}`}
+              style={
+                {
+                  "--route-start": `${Math.min(50, slotPosition)}%`,
+                  "--route-width": `${Math.abs(50 - slotPosition)}%`,
+                } as CSSProperties
+              }
+              key={`route-${item.key}`}
+              aria-hidden="true"
+            />
+          ) : null;
+        })}
+        {conditionUnion.map((item, index) =>
+          objective.conditions[item.key] !== "inactive" ? (
+            <span
+              className={`condition-flow-dot modality-${item.modality}`}
+              style={
+                {
+                  "--flow-slot": `${(index + 0.5) * 20}%`,
+                } as CSSProperties
+              }
+              key={`flow-${item.key}`}
+              aria-hidden="true"
+            />
+          ) : null,
+        )}
+        {conditionUnion.map((item) => {
+          const state = objective.conditions[item.key];
+          return (
+            <div
+              className={`condition-token modality-${item.modality} is-${state}`}
+              key={item.key}
+            >
+              <span
+                className={`condition-token__glyph modality-${item.modality}`}
+                aria-hidden="true"
+              >
+                {Array.from({ length: 6 }, (_, index) => (
+                  <i key={index} />
+                ))}
+              </span>
+              <small>{item.label}</small>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="generation-progress">
+        <div>
+          <span>Generation</span>
+          <small>
+            {committed} / 6 · pass {stage + 1}
+          </small>
+        </div>
+        <div
+          className="generation-progress__track"
+          role="progressbar"
+          aria-label={`${objective.title} reference generation`}
+          aria-valuemin={0}
+          aria-valuemax={6}
+          aria-valuenow={committed}
+        >
+          <span style={{ width: `${(committed / 6) * 100}%` }} />
+        </div>
+      </div>
+    </figure>
+  );
+}
+
+function LegacyTrainingComparison({
+  active,
+  objective,
+  stage,
+  onSelect,
+}: {
+  active: ObjectiveKey;
+  objective: Objective;
+  stage: number;
+  onSelect: (key: ObjectiveKey) => void;
+}) {
+  return (
+    <div className="legacy-training-comparison reveal">
+      <div className="legacy-training-comparison__intro">
+        <div>
+          <span>Reference implementation</span>
+          <h3>Original unified-model interaction</h3>
+        </div>
+        <p>
+          The team implementation is retained for direct comparison. Its
+          topology and motion are unchanged; only the original dark palette is
+          translated to a light theme.
+        </p>
+      </div>
+      <LegacyObjectiveSwitcher active={active} onSelect={onSelect} />
+      <div className="unified-workspace">
+        <LegacyObjectiveFigure objective={objective} stage={stage} />
+      </div>
+    </div>
+  );
+}
+
+type ThemePreference = "light" | "dark" | "auto";
+
+const themeOptions: Array<{
+  value: ThemePreference;
+  label: string;
+  icon: string;
+}> = [
+  { value: "light", label: "Use light theme", icon: "☀" },
+  { value: "dark", label: "Use dark theme", icon: "☾" },
+  { value: "auto", label: "Use system theme", icon: "A" },
+];
+
+function applyThemePreference(preference: ThemePreference) {
+  const resolved =
+    preference === "auto"
+      ? window.matchMedia("(prefers-color-scheme: light)").matches
+        ? "light"
+        : "dark"
+      : preference;
+
+  document.documentElement.dataset.theme = resolved;
+  document.documentElement.dataset.themePreference = preference;
+  document.documentElement.style.colorScheme = resolved;
+}
+
+function getInitialThemePreference(): ThemePreference {
+  if (typeof document === "undefined") return "auto";
+  const saved = document.documentElement.dataset.themePreference;
+  return saved === "light" || saved === "dark" || saved === "auto"
+    ? saved
+    : "auto";
+}
+
 function ThemeToggle() {
+  const [preference, setPreference] =
+    useState<ThemePreference>(getInitialThemePreference);
+
   useEffect(() => {
     const systemTheme = window.matchMedia("(prefers-color-scheme: light)");
     const syncWithSystem = (event: MediaQueryListEvent) => {
-      const saved = window.localStorage.getItem("dynin-color-theme");
-      if (saved === "light" || saved === "dark") return;
+      if (document.documentElement.dataset.themePreference !== "auto") return;
       const theme = event.matches ? "light" : "dark";
       document.documentElement.dataset.theme = theme;
       document.documentElement.style.colorScheme = theme;
@@ -1395,27 +1828,37 @@ function ThemeToggle() {
     return () => systemTheme.removeEventListener("change", syncWithSystem);
   }, []);
 
-  const toggleTheme = () => {
-    const current =
-      document.documentElement.dataset.theme === "light" ? "light" : "dark";
-    const next = current === "dark" ? "light" : "dark";
-    document.documentElement.dataset.theme = next;
-    document.documentElement.style.colorScheme = next;
+  const selectTheme = (next: ThemePreference) => {
+    setPreference(next);
     window.localStorage.setItem("dynin-color-theme", next);
+    applyThemePreference(next);
   };
 
   return (
-    <button
-      className="theme-toggle"
-      type="button"
-      onClick={toggleTheme}
-      aria-label="Toggle light and dark color theme"
-    >
-      <i className="theme-toggle__icon" aria-hidden="true" />
-      <span className="theme-toggle__to-light">Light mode</span>
-      <span className="theme-toggle__to-dark">Dark mode</span>
-      <small>Theme</small>
-    </button>
+    <fieldset className="theme-toggle" aria-label="Choose color theme">
+      <legend className="sr-only">Choose color theme</legend>
+      {themeOptions.map((option) => (
+        <span className="theme-toggle__option" key={option.value}>
+          <input
+            type="radio"
+            name="dynin-color-theme"
+            id={`theme-${option.value}`}
+            value={option.value}
+            checked={preference === option.value}
+            onChange={() => selectTheme(option.value)}
+            aria-label={option.label}
+            suppressHydrationWarning
+          />
+          <label
+            htmlFor={`theme-${option.value}`}
+            title={option.label}
+            className={`theme-toggle__label is-${option.value}`}
+          >
+            <span aria-hidden="true">{option.icon}</span>
+          </label>
+        </span>
+      ))}
+    </fieldset>
   );
 }
 
@@ -1559,17 +2002,8 @@ export default function Home() {
               index="01"
               eyebrow="Overview"
               title="Why unify semantics, dynamics, and control?"
-              body="Language-oriented policies and video/world-model policies bring complementary priors. The former are strong at grounding instructions; the latter explicitly model how the scene changes. Dynin-Robotics treats language, visual states, goals, and actions as variables of one conditional denoising problem."
+              body="Language-oriented policies understand instructions, while video and world models predict how scenes change. Dynin-Robotics brings both abilities—and action generation—into one shared model."
             />
-            <div className="academic-note reveal">
-              <strong>Formulation.</strong>
-              <p>
-                Given an objective token, the model keeps the corresponding
-                conditions visible and masks one target segment. A capability is
-                therefore selected by changing the observed and masked variables,
-                rather than routing the input to a separately trained expert.
-              </p>
-            </div>
             <ParadigmFigure />
           </div>
         </section>

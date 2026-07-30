@@ -32,6 +32,8 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.match(html, /release pending/);
   assert.match(html, /Goal-State Query/);
   assert.match(html, /World-Model Query/);
+  assert.match(html, /Figure 4 training-objective mapping/);
+  assert.doesNotMatch(html, /Original unified-model interaction/);
   assert.match(html, /ABot-M0/);
   assert.match(html, /asset placeholder/);
 });
@@ -69,12 +71,16 @@ test("keeps qualitative evidence as native empty media slots", async () => {
   assert.match(html, /Media intentionally omitted in this draft/);
 });
 
-test("ships a system-aware light and dark theme toggle", async () => {
+test("ships a system-aware three-way theme toggle", async () => {
   const html = await readFile(indexUrl, "utf8");
 
   assert.match(html, /dynin-color-theme/);
   assert.match(html, /prefers-color-scheme: light/);
-  assert.match(html, /Toggle light and dark color theme/);
-  assert.match(html, /Light mode/);
-  assert.match(html, /Dark mode/);
+  assert.match(html, /Choose color theme/);
+  assert.match(html, /Use light theme/);
+  assert.match(html, /Use dark theme/);
+  assert.match(html, /Use system theme/);
+  assert.match(html, /theme-light/);
+  assert.match(html, /theme-dark/);
+  assert.match(html, /theme-auto/);
 });

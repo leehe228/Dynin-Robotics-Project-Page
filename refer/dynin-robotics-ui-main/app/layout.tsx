@@ -43,16 +43,22 @@ const themeScript = `
   (() => {
     try {
       const saved = localStorage.getItem("dynin-color-theme");
-      const theme =
-        saved === "light" || saved === "dark"
+      const preference =
+        saved === "light" || saved === "dark" || saved === "auto"
           ? saved
-          : matchMedia("(prefers-color-scheme: light)").matches
+          : "auto";
+      const theme =
+        preference === "auto"
+          ? matchMedia("(prefers-color-scheme: light)").matches
             ? "light"
-            : "dark";
+            : "dark"
+          : preference;
       document.documentElement.dataset.theme = theme;
+      document.documentElement.dataset.themePreference = preference;
       document.documentElement.style.colorScheme = theme;
     } catch {
       document.documentElement.dataset.theme = "dark";
+      document.documentElement.dataset.themePreference = "auto";
       document.documentElement.style.colorScheme = "dark";
     }
   })();
