@@ -30,7 +30,7 @@ test("serves the GitHub Pages export from both local URL shapes", async () => {
   await access(cssPath);
 });
 
-test("returns every exported stylesheet and script over HTTP", async (context) => {
+test("returns exported styles, scripts, and demonstration videos over HTTP", async (context) => {
   const server = createPreviewServer();
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
@@ -48,7 +48,7 @@ test("returns every exported stylesheet and script over HTTP", async (context) =
 
   const html = await readFile(new URL("index.html", exportRoot), "utf8");
   const assetPaths = [
-    ...html.matchAll(/(?:href|src)="([^"]+\.(?:css|js)(?:[^"]*)?)"/g),
+    ...html.matchAll(/(?:href|src)="([^"]+\.(?:css|js|mp4)(?:[^"]*)?)"/g),
   ].map((match) => match[1]);
 
   assert.ok(assetPaths.length > 0);
@@ -60,5 +60,12 @@ test("returns every exported stylesheet and script over HTTP", async (context) =
       /^text\/plain/,
       assetPath,
     );
+    if (assetPath.endsWith(".mp4")) {
+      assert.match(
+        response.headers.get("content-type") ?? "",
+        /^video\/mp4/,
+        assetPath,
+      );
+    }
   }
 });

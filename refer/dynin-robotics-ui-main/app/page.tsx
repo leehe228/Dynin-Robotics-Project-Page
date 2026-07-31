@@ -16,6 +16,18 @@ type ConditionState = "required" | "optional" | "inactive";
 const INFERENCE_STAGE_COUNT = 4;
 const INFERENCE_STAGE_DURATION = 720;
 const INFERENCE_FINAL_HOLD_DURATION = 1500;
+const WORLD_OUTPUT_FRAME_COUNT = 5;
+const WORLD_OUTPUT_FRAME_INTERVAL = 100;
+const WORLD_OUTPUT_FINAL_HOLD_DURATION = 2500;
+const WORLD_SAMPLE_FADE_DURATION = 280;
+const GOAL_SAMPLES_PER_PAGE = 2;
+const GOAL_SAMPLE_INTERVAL = 3000;
+const GOAL_SAMPLE_FADE_DURATION = 280;
+const TASK_SAMPLES_PER_PAGE = 2;
+const TASK_SAMPLE_INTERVAL = 3000;
+const TASK_SAMPLE_FADE_DURATION = 280;
+const TASK_VIDEO_FRAME_COUNT = 30;
+const TASK_VIDEO_FRAME_INTERVAL = 100;
 const TRAINING_ANIMATION_MOMENTS = [
   { stage: 0, phase: "initial", duration: 850 },
   { stage: 1, phase: "ground-truth", duration: 750 },
@@ -51,10 +63,6 @@ type Objective = {
   index: string;
   short: string;
   title: string;
-  subtitle: string;
-  description: string;
-  inputSummary: string;
-  outputSummary: string;
   targetLabel: string;
   targetSymbol: string;
   targetModality: Exclude<Modality, "sensor">;
@@ -67,11 +75,6 @@ const objectives: Record<ObjectiveKey, Objective> = {
     index: "(a)",
     short: "Policy",
     title: "Policy",
-    subtitle: "Action generation",
-    description:
-      "The policy query keeps the current visual state and task instruction visible, optionally adds a predicted goal state or sensor context, and denoises a masked action chunk.",
-    inputSummary: "State · instruction · optional goal · optional sensor",
-    outputSummary: "Block-wise robot action chunk",
     targetLabel: "Actions aₜ",
     targetSymbol: "A",
     targetModality: "action",
@@ -88,11 +91,6 @@ const objectives: Record<ObjectiveKey, Objective> = {
     index: "(b)",
     short: "World",
     title: "World Modeling",
-    subtitle: "Action-conditioned future prediction",
-    description:
-      "The world-model query observes the current state and an action chunk, optionally reads the instruction, and reconstructs the next visual state in the shared visual-token space.",
-    inputSummary: "State · action · optional instruction",
-    outputSummary: "Next visual state",
     targetLabel: "Next state sₜ₊₁",
     targetSymbol: "V",
     targetModality: "vision",
@@ -109,11 +107,6 @@ const objectives: Record<ObjectiveKey, Objective> = {
     index: "(c)",
     short: "Goal state",
     title: "Goal-State Prediction",
-    subtitle: "Instruction-conditioned goal visualization",
-    description:
-      "The goal-state query uses an initial observation and instruction to reconstruct a terminal or successful scene before the policy produces an action.",
-    inputSummary: "Initial state · instruction",
-    outputSummary: "Goal-state image",
     targetLabel: "Goal state s_T",
     targetSymbol: "V",
     targetModality: "vision",
@@ -130,11 +123,6 @@ const objectives: Record<ObjectiveKey, Objective> = {
     index: "(d)",
     short: "Task",
     title: "Task Understanding",
-    subtitle: "Trajectory-to-language understanding",
-    description:
-      "The task-understanding query observes sampled trajectory frames and reconstructs the instruction with bidirectional, fully parallel text decoding.",
-    inputSummary: "Sampled trajectory states",
-    outputSummary: "Task instruction",
     targetLabel: "Instruction ℓ",
     targetSymbol: "T",
     targetModality: "text",
@@ -226,33 +214,79 @@ const objectiveOrder: ObjectiveKey[] = [
 
 const overviewNarrativeObjectives: ObjectiveKey[] = [...objectiveOrder];
 
-const conditionSlots: Array<{
-  key: ConditionKey;
-  label: string;
-  symbol: string;
-  modality: Modality;
-}> = [
-  { key: "state", label: "State", symbol: "V", modality: "vision" },
-  { key: "instruction", label: "Instruction", symbol: "T", modality: "text" },
-  { key: "action", label: "Action", symbol: "A", modality: "action" },
-  { key: "goal", label: "Goal state", symbol: "V", modality: "vision" },
-  { key: "sensor", label: "Sensor", symbol: "S", modality: "sensor" },
-];
+const capabilitySummaryCards = [
+  {
+    key: "policy",
+    title: "Policy",
+    body: "Generate robot action sequences from the current visual state and task instruction.",
+    inputs: [
+      { label: "Current states", modality: "vision" },
+      { label: "Instructions", modality: "text" },
+      { label: "Goal state", modality: "vision" },
+      { label: "Sensor", modality: "sensor" },
+    ],
+    output: { label: "Action sequence", modality: "action" },
+  },
+  {
+    key: "world",
+    title: "World Modeling",
+    body: "Predict future visual states from observed frames and robot actions.",
+    inputs: [
+      { label: "Current states", modality: "vision" },
+      { label: "Instructions", modality: "text" },
+      { label: "Actions", modality: "action" },
+    ],
+    output: { label: "Next states", modality: "vision" },
+  },
+  {
+    key: "goal",
+    title: "Goal-State Prediction",
+    body: "Generate a goal state from an initial observation and language instruction.",
+    inputs: [
+      { label: "Initial state", modality: "vision" },
+      { label: "Instructions", modality: "text" },
+    ],
+    output: { label: "Goal state", modality: "vision" },
+  },
+  {
+    key: "instruction",
+    title: "Task Understanding",
+    body: "Decode an observed task trajectory into a natural-language task description.",
+    inputs: [{ label: "Task video frames", modality: "vision" }],
+    output: { label: "Task description", modality: "text" },
+  },
+] as const;
 
-const outputLanes: Array<{
-  modality: Exclude<Modality, "sensor">;
-  label: string;
-  symbol: string;
-}> = [
-  { modality: "text", label: "Text", symbol: "T" },
-  { modality: "vision", label: "Vision", symbol: "V" },
-  { modality: "action", label: "Action", symbol: "A" },
-];
+const policyCapabilityExample = {
+  input: "/assets/training/policy_input.png",
+  instruction: "Put the glue stick inside the open drawer",
+  goal: "/assets/training/policy_goal.png",
+  action: ["-0.80", "-0.55", "0.18", "0.04", "-0.15", "0.41"],
+} as const;
 
-const capabilityChapters = objectiveOrder.map((key, index) => ({
-  number: `0${index + 1}`,
-  objective: objectives[key],
-}));
+const goalCapabilityExample = {
+  input: "/assets/training/goal_input.png",
+  instruction: "Unfold the white towel on the table",
+  generated: "/assets/training/goal_gen.png",
+} as const;
+
+const worldCapabilityExample = {
+  input: "/assets/training/wm_input.png",
+  instruction: "Take the purple plush toy out of the bowl",
+  action: ["0.01", "0.13", "0.63", "0.40", "-0.25", "-0.05"],
+  generated: "/assets/training/wm_gen.png",
+} as const;
+
+const taskCapabilityExample = {
+  frames: [
+    "/assets/training/tu_input1.png",
+    "/assets/training/tu_input2.png",
+    "/assets/training/tu_input3.png",
+    "/assets/training/tu_input4.png",
+    "/assets/training/tu_input5.png",
+  ],
+  description: "Push the faucet of the sink slightly to the left",
+} as const;
 
 const inferenceModes = [
   {
@@ -311,7 +345,18 @@ const inferenceModes = [
   },
 ];
 
+const INFERENCE_MODE_CYCLE_INTERVAL = 2000;
+
 type InferenceStageKind = "goal" | "policy" | "world";
+type ObjectiveTokenSymbol = "PO" | "WM" | "GP" | "TU";
+
+const objectiveTokenSymbols: Record<ObjectiveKey, ObjectiveTokenSymbol> = {
+  policy: "PO",
+  world: "WM",
+  goal: "GP",
+  instruction: "TU",
+};
+
 type InferenceSlotKey =
   | "objective"
   | "stateVision"
@@ -364,36 +409,175 @@ const inferenceStageSlots: Array<{
   },
 ];
 
+type TrainingObjectiveSlotKey =
+  | "objective"
+  | "state"
+  | "instruction"
+  | "action"
+  | "goal"
+  | "sensor";
+
+type TrainingObjectiveTokenState =
+  | "required"
+  | "optional"
+  | "masked"
+  | "inactive";
+
+type TrainingObjectiveCardConfig = {
+  key: ObjectiveKey;
+  title: string;
+  summary: string;
+  targetSlot: TrainingObjectiveSlotKey;
+  targetLabel: string;
+  inputLabels?: Partial<Record<TrainingObjectiveSlotKey, string>>;
+  outputLabels?: Partial<Record<TrainingObjectiveSlotKey, string>>;
+  inputStates: Record<
+    TrainingObjectiveSlotKey,
+    TrainingObjectiveTokenState
+  >;
+};
+
+const trainingObjectiveSlots: Array<{
+  key: TrainingObjectiveSlotKey;
+  symbol: "OBJ" | "V" | "T" | "A" | "S";
+  label: string;
+  modality: "objective" | Modality;
+}> = [
+  {
+    key: "objective",
+    symbol: "OBJ",
+    label: "Objective",
+    modality: "objective",
+  },
+  { key: "state", symbol: "V", label: "State", modality: "vision" },
+  {
+    key: "instruction",
+    symbol: "T",
+    label: "Instruction",
+    modality: "text",
+  },
+  { key: "action", symbol: "A", label: "Action", modality: "action" },
+  {
+    key: "goal",
+    symbol: "V",
+    label: "Goal state",
+    modality: "vision",
+  },
+  { key: "sensor", symbol: "S", label: "Sensor", modality: "sensor" },
+];
+
+const trainingObjectiveCards: TrainingObjectiveCardConfig[] = [
+  {
+    key: "policy",
+    title: "Policy",
+    summary:
+      "Generate robot actions from the observed state and instruction, with optional goal-state context and sensor input.",
+    targetSlot: "action",
+    targetLabel: "Action",
+    inputStates: {
+      objective: "required",
+      state: "required",
+      instruction: "required",
+      action: "masked",
+      goal: "optional",
+      sensor: "optional",
+    },
+  },
+  {
+    key: "world",
+    title: "World Modeling",
+    summary:
+      "Predict the next visual state from the current state, with language and action provided when available.",
+    targetSlot: "goal",
+    targetLabel: "Next state",
+    inputLabels: {
+      state: "Current state",
+      goal: "State",
+    },
+    outputLabels: {
+      state: "State",
+    },
+    inputStates: {
+      objective: "required",
+      state: "required",
+      instruction: "optional",
+      action: "optional",
+      goal: "masked",
+      sensor: "inactive",
+    },
+  },
+  {
+    key: "goal",
+    title: "Goal-State Prediction",
+    summary:
+      "Generate a visual goal state from the initial observation and task instruction.",
+    targetSlot: "goal",
+    targetLabel: "Goal state",
+    inputLabels: {
+      state: "Initial state",
+      goal: "State",
+    },
+    inputStates: {
+      objective: "required",
+      state: "required",
+      instruction: "required",
+      action: "inactive",
+      goal: "masked",
+      sensor: "inactive",
+    },
+  },
+  {
+    key: "instruction",
+    title: "Task Understanding",
+    summary:
+      "Recover the task instruction from an observed sequence of robot states.",
+    targetSlot: "instruction",
+    targetLabel: "Instruction",
+    inputLabels: {
+      state: "State sequence",
+      goal: "State",
+    },
+    inputStates: {
+      objective: "required",
+      state: "required",
+      instruction: "masked",
+      action: "inactive",
+      goal: "inactive",
+      sensor: "inactive",
+    },
+  },
+];
+
 const liberoRows = [
   {
     model: "π0.5",
-    family: "Vision-language",
+    family: "Vision-Language Model",
     values: ["98.8", "98.2", "98.0", "92.4", "96.9"],
   },
   {
     model: "ABot-M0",
-    family: "Vision-language",
+    family: "Vision-Language Model",
     values: ["98.8", "99.8", "99.0", "96.6", "98.6"],
   },
   {
     model: "Cosmos Policy",
-    family: "Video generation",
+    family: "Video Generation Model",
     values: ["98.1", "100.0", "98.2", "97.6", "98.5"],
   },
   {
     model: "LingBot-VA",
-    family: "Video generation",
+    family: "Video Generation Model",
     values: ["98.5", "99.6", "97.2", "98.5", "98.5"],
   },
   {
     model: "MMaDA-VLA",
-    family: "Unified",
+    family: "Unified Model",
     values: ["98.8", "99.8", "98.0", "95.2", "98.0"],
   },
   {
-    model: "Dynin-Robotics",
-    family: "Unified · ours",
-    values: ["98.9±0.3", "99.8±0.1", "97.8±0.4", "95.8±0.5", "98.1"],
+    model: "Dynin-Robotics (Ours)",
+    family: "Unified Model",
+    values: ["98.9", "99.8", "97.8", "95.8", "98.1"],
     ours: true,
   },
 ];
@@ -401,35 +585,45 @@ const liberoRows = [
 const liberoPlusRows = [
   {
     model: "OpenVLA-OFT",
-    family: "Vision-language",
+    family: "Vision-Language Model",
     values: ["56.4", "31.9", "79.5", "88.7", "93.3", "75.8", "74.2", "69.6"],
   },
   {
+    model: "π0",
+    family: "Vision-Language Model",
+    values: ["13.8", "6.0", "58.8", "85.0", "81.4", "79.0", "68.9", "53.6"],
+  },
+  {
+    model: "π0-FAST",
+    family: "Vision-Language Model",
+    values: ["65.1", "21.6", "61.0", "73.2", "73.2", "74.4", "68.8", "61.6"],
+  },
+  {
     model: "RIPT-VLA",
-    family: "Vision-language",
+    family: "Vision-Language Model",
     values: ["55.2", "31.2", "77.6", "88.4", "91.6", "73.5", "74.2", "68.4"],
   },
   {
     model: "ABot-M0",
-    family: "Vision-language",
+    family: "Vision-Language Model",
     values: ["60.4", "67.9", "86.4", "96.2", "91.6", "86.4", "82.6", "80.5"],
   },
   {
     model: "UniVLA",
-    family: "Unified",
+    family: "Unified Model",
     values: ["1.8", "46.2", "69.6", "69.0", "81.0", "21.2", "31.9", "42.9"],
   },
   {
-    model: "Dynin-Robotics",
-    family: "Unified · ours",
+    model: "Dynin-Robotics (Ours)",
+    family: "Unified Model",
     values: [
-      "59.8±1.3",
-      "48.2±1.9",
-      "85.0±0.9",
-      "83.5±2.1",
-      "84.6±0.5",
-      "78.2±1.4",
-      "71.8±1.0",
+      "59.8",
+      "48.2",
+      "85.0",
+      "83.5",
+      "84.6",
+      "78.2",
+      "71.8",
       "73.0",
     ],
     ours: true,
@@ -437,11 +631,96 @@ const liberoPlusRows = [
 ];
 
 const objectiveAblation = [
-  { label: "Policy only", gap: "13.27", ood: "33.88" },
-  { label: "+ World Modeling", gap: "6.47", ood: "39.54" },
-  { label: "+ Task Understanding", gap: "4.09", ood: "45.29" },
-  { label: "+ Goal-State Prediction", gap: "2.33", ood: "47.28" },
+  { label: "Policy only", id: "47.15", ood: "33.88", gap: "13.27" },
+  { label: "+ World Modeling", id: "46.01", ood: "39.54", gap: "6.47" },
+  { label: "+ Task Understanding", id: "49.38", ood: "45.29", gap: "4.09" },
+  {
+    label: "+ Goal-State Prediction",
+    id: "49.61",
+    ood: "47.28",
+    gap: "2.33",
+  },
 ];
+
+const inferenceAblationResults = [
+  {
+    variant: "(a) Default Policy",
+    id: "45.8",
+    ood: "41.4",
+    gap: "4.4",
+    effectiveTps: "9.238",
+  },
+  {
+    variant: "(b) Action/World Model Joint Denoise",
+    id: "46.4",
+    ood: "40.5",
+    gap: "5.9",
+    effectiveTps: "8.805",
+  },
+  {
+    variant: "(c) Goal-State Guided Policy",
+    id: "45.6",
+    ood: "38.2",
+    gap: "7.1",
+    effectiveTps: "9.208",
+  },
+  {
+    variant: "(d) Action Candidate Reranking",
+    id: "46.3",
+    ood: "42.0",
+    gap: "4.3",
+    effectiveTps: "4.904",
+  },
+  {
+    variant: "(e) Goal-State Guided + Action/World Model Joint Denoise",
+    id: "49.6",
+    ood: "47.2",
+    gap: "2.4",
+    effectiveTps: "8.709",
+  },
+  {
+    variant: "(f) Goal-State Guided + Action Candidate Reranking",
+    id: "48.9",
+    ood: "47.7",
+    gap: "1.4",
+    effectiveTps: "4.828",
+  },
+] as const;
+
+const accelerationResults = [
+  {
+    label: "Dynin-Robotics",
+    effectiveTps: "9.221",
+    speedup: "1.00x",
+  },
+  {
+    label: "Dynin-Robotics-dInfer-BL7",
+    effectiveTps: "91.236",
+    speedup: "9.89x",
+  },
+  {
+    label: "Dynin-Robotics-dInfer-BL35",
+    effectiveTps: "268.834",
+    speedup: "29.15x",
+  },
+] as const;
+
+const accelerationBaselineGroups = [
+  {
+    family: "Vision-Language Models",
+    rows: [
+      { model: "OpenVLA-OFT", effectiveTps: "19.114" },
+      { model: "π0.5", effectiveTps: "7.351" },
+    ],
+  },
+  {
+    family: "Mask Diffusion Models",
+    rows: [
+      { model: "LLaDA-VLA", effectiveTps: "2.079" },
+      { model: "MMaDA-VLA", effectiveTps: "1.827" },
+    ],
+  },
+] as const;
 
 const assetBase = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -459,24 +738,106 @@ function assetPath(path: string) {
 
 const worldQualitativeRows = [
   {
-    key: "row_01_droid_sample_0003",
-    action: ["0.07", "-0.07", "-0.63", "0.30", "-0.81", "0.89"],
-  },
-  {
     key: "row_02_droid_sample_0000",
     action: ["0.01", "0.01", "-0.12", "-0.02", "0.04", "0.00"],
   },
+  {
+    key: "row_03_rt-1_sample_0002",
+    action: ["0.16", "0.20", "-0.11", "-0.09", "0.22", "0.15"],
+  },
+  {
+    key: "row_04_taco_play_sample_0002",
+    action: ["-0.13", "0.03", "-0.49", "0.03", "0.36", "-0.04"],
+  },
+  {
+    key: "row_05_jaco_play_sample_0001",
+    action: ["-0.90", "-0.71", "0.03", "0.00", "0.00", "0.00"],
+  },
 ] as const;
+
+const goalQualitativeSamples = [
+  {
+    key: "row_01_droid_sample_0000",
+    instruction: "Take the pen out of the cup and place it on the counter",
+  },
+  {
+    key: "row_02_rt-1_sample_0000",
+    instruction: "place apple into middle drawer",
+  },
+  {
+    key: "row_03_droid_sample_0000",
+    instruction: "Place the t-shirts on the brown box",
+  },
+  {
+    key: "row_04_jaco_play_sample_0006",
+    instruction: "place the steak meat in the white plate",
+  },
+  {
+    key: "row_05_droid_sample_0000",
+    instruction:
+      "Remove the green cloth from the drawer and place it on the bed",
+  },
+  {
+    key: "row_06_droid_sample_0000",
+    instruction: "Put the rubik's cube on the top of the shelf",
+  },
+] as const;
+
+const taskQualitativeSamples = [
+  {
+    key: "row_01_droid_sample_0004",
+    prediction: "Put the purple object in the bowl",
+  },
+  {
+    key: "row_02_droid_sample_0000",
+    prediction: "Fold the cloth on the table",
+  },
+  {
+    key: "row_03_rt-1_sample_0003",
+    prediction: "Pick pepsi can from middle drawer and place on counter",
+  },
+  {
+    key: "row_04_taco_play_sample_0000",
+    prediction: "Grasp the door handle, slide the door to the left",
+  },
+  {
+    key: "row_05_jaco_play_sample_0002",
+    prediction: "Pick up the yellow cup",
+  },
+  {
+    key: "row_06_jaco_play_sample_0000",
+    prediction: "Place the milk dairy on the table",
+  },
+] as const;
+
+const goalSamplePageCount = Math.ceil(
+  goalQualitativeSamples.length / GOAL_SAMPLES_PER_PAGE,
+);
+
+const taskSamplePageCount = Math.ceil(
+  taskQualitativeSamples.length / TASK_SAMPLES_PER_PAGE,
+);
 
 function worldFramePaths(
   sample: string,
-  kind: "input" | "prediction" | "target",
+  kind: "input" | "prediction",
 ) {
   return Array.from(
-    { length: 5 },
+    { length: WORLD_OUTPUT_FRAME_COUNT },
     (_, index) =>
       `/assets/qualitative/world/${sample}/${kind}_${String(index).padStart(3, "0")}.jpg`,
   );
+}
+
+function goalFramePath(
+  sample: string,
+  kind: "input" | "prediction",
+) {
+  return `/assets/qualitative/future/${sample}/${kind}.jpg`;
+}
+
+function taskVideoFramePath(sample: string, frameIndex: number) {
+  return `/assets/qualitative/goal/${sample}/uniform_30_frames/tu_state${frameIndex}.jpg`;
 }
 
 function TokenStrip({
@@ -522,181 +883,6 @@ function TokenStrip({
         );
       })}
     </span>
-  );
-}
-
-function ObjectiveTabs({
-  active,
-  onSelect,
-  controlsPrefix,
-}: {
-  active: ObjectiveKey;
-  onSelect: (key: ObjectiveKey) => void;
-  controlsPrefix: string;
-}) {
-  return (
-    <div
-      className="objective-tabs"
-      role="tablist"
-      aria-label="Unified training objective"
-      onKeyDown={(event) => {
-        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
-          return;
-        }
-        event.preventDefault();
-        const current = objectiveOrder.indexOf(active);
-        const next =
-          event.key === "Home"
-            ? 0
-            : event.key === "End"
-              ? objectiveOrder.length - 1
-              : (current +
-                  (event.key === "ArrowLeft" ? -1 : 1) +
-                  objectiveOrder.length) %
-                objectiveOrder.length;
-        onSelect(objectiveOrder[next]);
-        event.currentTarget
-          .querySelectorAll<HTMLButtonElement>('[role="tab"]')
-          [next]?.focus();
-      }}
-    >
-      {objectiveOrder.map((key) => (
-        <button
-          type="button"
-          role="tab"
-          aria-selected={active === key}
-          aria-controls={`${controlsPrefix}-${key}`}
-          id={`${controlsPrefix}-tab-${key}`}
-          tabIndex={active === key ? 0 : -1}
-          className={active === key ? "is-active" : ""}
-          onClick={() => onSelect(key)}
-          key={key}
-        >
-          <span>{objectives[key].index}</span>
-          {objectives[key].title}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function UnifiedQueryFigure({
-  objective,
-  stage = 4,
-  compact = false,
-  caption,
-}: {
-  objective: Objective;
-  stage?: number;
-  compact?: boolean;
-  caption?: string;
-}) {
-  const resolved = stage === 0 ? 0 : Math.min(6, stage + 2);
-  const activeConditions = conditionSlots.filter(
-    (slot) => objective.conditions[slot.key] !== "inactive",
-  );
-
-  return (
-    <figure
-      className={`unified-query-figure is-${objective.key} ${
-        compact ? "is-compact" : ""
-      }`}
-      aria-label={`${objective.title} conditional query`}
-    >
-      <div className="query-level-label">
-        <span>Prediction targets</span>
-        <b>OUTPUTS</b>
-      </div>
-      <div className="query-output-row">
-        {outputLanes.map((lane) => {
-          const active = objective.targetModality === lane.modality;
-          return (
-            <article
-              className={`query-output modality-${lane.modality} ${
-                active ? "is-active" : "is-inactive"
-              }`}
-              key={lane.modality}
-            >
-              <span>{active ? objective.targetLabel : lane.label}</span>
-              <TokenStrip
-                modality={lane.modality}
-                symbol={active ? objective.targetSymbol : lane.symbol}
-                active={active}
-                masked={active}
-                resolved={resolved}
-                count={compact ? 4 : 6}
-              />
-              <small>
-                {active
-                  ? lane.modality === "action"
-                    ? "block-wise parallel"
-                    : "fully parallel"
-                  : "not queried"}
-              </small>
-            </article>
-          );
-        })}
-      </div>
-
-      <div className="query-vertical-flow is-output" aria-hidden="true">
-        <span />
-      </div>
-
-      <div className="query-core">
-        <small>{objective.index} objective token</small>
-        <strong>Dynin-Robotics</strong>
-        <p>one bidirectional masked-diffusion backbone</p>
-        <div className="query-core__passes" aria-hidden="true">
-          {Array.from({ length: 4 }, (_, index) => (
-            <i className={index <= stage - 1 ? "is-active" : ""} key={index} />
-          ))}
-        </div>
-      </div>
-
-      <div className="query-vertical-flow is-input" aria-hidden="true">
-        <span />
-      </div>
-
-      <div className="query-level-label">
-        <span>Visible trajectory variables</span>
-        <b>INPUTS</b>
-      </div>
-      <div className="query-input-row">
-        {conditionSlots.map((slot) => {
-          const state = objective.conditions[slot.key];
-          return (
-            <article
-              className={`query-input modality-${slot.modality} is-${state}`}
-              key={slot.key}
-            >
-              <span>{slot.label}</span>
-              <TokenStrip
-                modality={slot.modality}
-                symbol={slot.symbol}
-                active={state !== "inactive"}
-                optional={state === "optional"}
-                count={compact ? 3 : 5}
-              />
-              <small>
-                {state === "required"
-                  ? "visible"
-                  : state === "optional"
-                    ? "optional"
-                    : "unused"}
-              </small>
-            </article>
-          );
-        })}
-      </div>
-
-      {caption && <figcaption>{caption}</figcaption>}
-      <span className="sr-only">
-        Inputs are shown below the centered Dynin-Robotics model. The active
-        output is shown above. Active inputs:{" "}
-        {activeConditions.map((slot) => slot.label).join(", ")}. Target:{" "}
-        {objective.targetLabel}.
-      </span>
-    </figure>
   );
 }
 
@@ -1471,41 +1657,153 @@ function ArchitectureFigure() {
   );
 }
 
-function CapabilityChapter({
-  number,
+function TrainingObjectiveRail({
+  objective,
+  placement,
+}: {
+  objective: TrainingObjectiveCardConfig;
+  placement: "input" | "output";
+}) {
+  const targetSlot = trainingObjectiveSlots.find(
+    (slot) => slot.key === objective.targetSlot,
+  );
+  const railLabel =
+    placement === "output"
+      ? `Prediction target: ${objective.targetLabel}`
+      : `Training inputs for ${objective.title}`;
+
+  return (
+    <div
+      className={`inference-module__rail training-objective-card__rail is-${placement}`}
+      aria-label={railLabel}
+    >
+      {trainingObjectiveSlots.map((slot) => {
+        const tokenState =
+          placement === "output"
+            ? slot.key === objective.targetSlot
+              ? "target"
+              : "inactive"
+            : objective.inputStates[slot.key];
+        const slotSymbol =
+          slot.key === "objective"
+            ? objectiveTokenSymbols[objective.key]
+            : slot.symbol;
+        const isActive = ["required", "optional", "target"].includes(
+          tokenState,
+        );
+        const isTrainingTargetFlow =
+          ["policy", "world", "goal", "instruction"].includes(
+            objective.key,
+          ) &&
+          placement === "input" &&
+          slot.key === objective.targetSlot;
+        const slotLabel =
+          placement === "output" && slot.key === objective.targetSlot
+            ? objective.targetLabel
+            : placement === "output"
+              ? objective.outputLabels?.[slot.key] ??
+                objective.inputLabels?.[slot.key] ??
+                slot.label
+              : objective.inputLabels?.[slot.key] ?? slot.label;
+
+        return (
+          <span
+            className={`inference-module__token training-objective-card__token modality-${slot.modality} is-${tokenState} ${
+              isActive ? "is-active" : "is-inactive"
+            } ${tokenState === "target" ? "is-target" : ""} ${
+              isTrainingTargetFlow ? "is-flow-source" : ""
+            }`}
+            data-slot={slot.key}
+            key={slot.key}
+          >
+            <i aria-hidden="true">
+              {isActive
+                ? slot.key === objective.targetSlot && placement === "output"
+                  ? targetSlot?.symbol
+                  : slotSymbol
+                : ""}
+            </i>
+            <small data-multiline={slotLabel.includes(" ")}>
+              {slotLabel}
+            </small>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function TrainingObjectiveCard({
   objective,
 }: {
-  number: string;
-  objective: Objective;
+  objective: TrainingObjectiveCardConfig;
 }) {
+  const headingId = `training-objective-${objective.key}-title`;
+
   return (
-    <article className="capability-chapter reveal">
-      <div className="capability-copy">
-        <div>
-          <span>{number}</span>
-          <p>{objective.subtitle}</p>
-        </div>
-        <h3>{objective.title}</h3>
-        <p>{objective.description}</p>
-        <dl>
-          <div>
-            <dt>Visible context</dt>
-            <dd>{objective.inputSummary}</dd>
-          </div>
-          <div>
-            <dt>Masked target</dt>
-            <dd>{objective.outputSummary}</dd>
-          </div>
-        </dl>
+    <article
+      className={`inference-module is-active training-objective-card is-${objective.key} ${
+        ["policy", "world", "goal", "instruction"].includes(objective.key)
+          ? "has-token-flow"
+          : ""
+      }`}
+      aria-labelledby={headingId}
+    >
+      <header>
+        <h3 id={headingId}>{objective.title}</h3>
+        <p>{objective.summary}</p>
+      </header>
+      <div className="inference-module__row is-output">
+        <TrainingObjectiveRail objective={objective} placement="output" />
       </div>
-      <UnifiedQueryFigure objective={objective} stage={4} compact />
+      <div className="inference-module__core">
+        <strong>Dynin-Robotics</strong>
+      </div>
+      <div className="inference-module__row is-input">
+        <TrainingObjectiveRail objective={objective} placement="input" />
+      </div>
     </article>
+  );
+}
+
+function TrainingObjectiveGrid() {
+  return (
+    <figure
+      className="training-objective-explorer reveal"
+      aria-label="Four unified training objectives"
+    >
+      <div
+        className="training-objective-explorer__legend"
+        aria-label="Token state legend"
+      >
+        <span>
+          <i className="is-condition" aria-hidden="true" />
+          Visible condition
+        </span>
+        <span>
+          <i className="is-optional" aria-hidden="true" />
+          Optional
+        </span>
+      </div>
+      <div className="training-objective-grid">
+        {trainingObjectiveCards.map((objective) => (
+          <TrainingObjectiveCard objective={objective} key={objective.key} />
+        ))}
+      </div>
+      <figcaption className="sr-only">
+        Policy, world modeling, goal-state prediction, and instruction
+        understanding share the same Dynin-Robotics backbone. Solid tokens are
+        visible conditions, dashed tokens are optional, and the masked input is
+        reconstructed as the prediction target.
+      </figcaption>
+    </figure>
   );
 }
 
 function InferenceStageRail({
   active,
   activeSlots,
+  objectiveSymbol,
   targetSlots = [],
   flowSlots = [],
   slotLabels = {},
@@ -1513,6 +1811,7 @@ function InferenceStageRail({
 }: {
   active: boolean;
   activeSlots: InferenceSlotKey[];
+  objectiveSymbol: ObjectiveTokenSymbol;
   targetSlots?: InferenceSlotKey[];
   flowSlots?: InferenceSlotKey[];
   slotLabels?: Partial<Record<InferenceSlotKey, string>>;
@@ -1532,6 +1831,8 @@ function InferenceStageRail({
     >
       {inferenceStageSlots.map((slot) => {
         const slotActive = active && activeSlots.includes(slot.key);
+        const slotSymbol =
+          slot.key === "objective" ? objectiveSymbol : slot.symbol;
         const isTarget = slotActive && targetSlots.includes(slot.key);
         const isFlowSource =
           placement === "input" && flowSlots.includes(slot.key);
@@ -1550,10 +1851,10 @@ function InferenceStageRail({
             }`}
             data-active={slotActive}
             data-slot={slot.key}
-            data-symbol={slot.symbol}
+            data-symbol={slotSymbol}
             key={slot.key}
           >
-            <i aria-hidden="true">{slotActive ? slot.symbol : ""}</i>
+            <i aria-hidden="true">{slotActive ? slotSymbol : ""}</i>
             <small data-multiline={slotLabel.includes("\n")}>
               {slotLabel}
             </small>
@@ -1622,6 +1923,7 @@ function InferenceStage({
         <InferenceStageRail
           active={active}
           activeSlots={activeOutputs}
+          objectiveSymbol={objectiveTokenSymbols[kind]}
           targetSlots={targetOutputs}
           slotLabels={outputSlotLabels}
           placement="output"
@@ -1634,6 +1936,7 @@ function InferenceStage({
         <InferenceStageRail
           active={active}
           activeSlots={["objective", ...activeInputs]}
+          objectiveSymbol={objectiveTokenSymbols[kind]}
           flowSlots={flowSlots}
           slotLabels={inputSlotLabels}
           placement="input"
@@ -1645,7 +1948,38 @@ function InferenceStage({
 
 function InferenceExplorer() {
   const [activeMode, setActiveMode] = useState(0);
+  const [cycleResetId, setCycleResetId] = useState(0);
   const mode = inferenceModes[activeMode];
+
+  const selectInferenceMode = useCallback((index: number) => {
+    setActiveMode(index);
+    setCycleResetId((current) => current + 1);
+  }, []);
+
+  useEffect(() => {
+    const motionPreference = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    );
+    let modeTimer: number | undefined;
+
+    const scheduleNextMode = () => {
+      if (modeTimer !== undefined) window.clearTimeout(modeTimer);
+      if (motionPreference.matches) return;
+
+      modeTimer = window.setTimeout(() => {
+        setActiveMode((current) => (current + 1) % inferenceModes.length);
+      }, INFERENCE_MODE_CYCLE_INTERVAL);
+    };
+
+    motionPreference.addEventListener("change", scheduleNextMode);
+    scheduleNextMode();
+
+    return () => {
+      if (modeTimer !== undefined) window.clearTimeout(modeTimer);
+      motionPreference.removeEventListener("change", scheduleNextMode);
+    };
+  }, [activeMode, cycleResetId]);
+
   const worldActive = mode.world === "rerank";
   const policyVariant =
     mode.world === "joint"
@@ -1713,6 +2047,7 @@ function InferenceExplorer() {
     <div className="inference-explorer reveal">
       <div className="inference-explorer__figure-shell">
         <section
+          key={mode.key}
           className="inference-panel"
           role="tabpanel"
           id="inference-mode-panel"
@@ -1720,11 +2055,7 @@ function InferenceExplorer() {
           aria-describedby="inference-mode-summary"
           tabIndex={0}
         >
-          <div
-            className="inference-panel__intro"
-            aria-live="polite"
-            aria-atomic="true"
-          >
+          <div className="inference-panel__intro">
             <h3 id="inference-mode-title">{mode.title}</h3>
             <p id="inference-mode-summary">{mode.summary}</p>
           </div>
@@ -1841,7 +2172,7 @@ function InferenceExplorer() {
                     (event.key === "ArrowLeft" ? -1 : 1) +
                     inferenceModes.length) %
                   inferenceModes.length;
-          setActiveMode(next);
+          selectInferenceMode(next);
           event.currentTarget
             .querySelectorAll<HTMLButtonElement>('[role="tab"]')
             [next]?.focus();
@@ -1857,7 +2188,7 @@ function InferenceExplorer() {
             id={`inference-tab-${item.key}`}
             tabIndex={activeMode === index ? 0 : -1}
             className={activeMode === index ? "is-active" : ""}
-            onClick={() => setActiveMode(index)}
+            onClick={() => selectInferenceMode(index)}
             key={item.key}
           >
             {item.short}
@@ -1870,32 +2201,40 @@ function InferenceExplorer() {
 
 function FrameStrip({
   count = 5,
-  playback = false,
   numbered = true,
   images,
   label,
+  visibleCount,
 }: {
   count?: number;
-  playback?: boolean;
   numbered?: boolean;
   images?: string[];
   label: string;
+  visibleCount?: number;
 }) {
+  const isSequenced = visibleCount !== undefined;
+
   return (
     <div
-      className={`qualitative-frame-strip${playback ? " is-playback" : ""}`}
+      className={`qualitative-frame-strip${isSequenced ? " is-sequenced" : ""}`}
       aria-label={label}
     >
       {images
-        ? images.map((src, index) => (
-            <img
-              alt={`${label}, frame ${index + 1}`}
-              decoding="async"
-              key={src}
-              loading="lazy"
-              src={assetPath(src)}
-            />
-          ))
+        ? images.map((src, index) => {
+            const isVisible = !isSequenced || index < visibleCount;
+
+            return (
+              <img
+                alt={`${label}, frame ${index + 1}`}
+                aria-hidden={!isVisible}
+                className={isVisible ? "is-visible" : undefined}
+                decoding="async"
+                key={src}
+                loading="lazy"
+                src={assetPath(src)}
+              />
+            );
+          })
         : Array.from({ length: count }, (_, index) => (
             <i
               aria-hidden="true"
@@ -1905,31 +2244,32 @@ function FrameStrip({
               {numbered && <span>{String(index + 1).padStart(2, "0")}</span>}
             </i>
           ))}
-      {playback && (
-        <span className="qualitative-playback-label" aria-hidden="true">
-          <i />
-          frame playback
-        </span>
-      )}
     </div>
   );
 }
 
-function SingleFramePlaceholder({ label }: { label: string }) {
+function SingleFrameImage({ src, label }: { src: string; label: string }) {
   return (
-    <div className="qualitative-single-frame" aria-label={label}>
-      <span aria-hidden="true">asset placeholder</span>
+    <div className="qualitative-single-frame has-image">
+      <img
+        alt={label}
+        decoding="async"
+        loading="lazy"
+        src={assetPath(src)}
+      />
     </div>
   );
 }
 
-function TextPlaceholder({ label }: { label: string }) {
+function TaskVideoFrame({ src, label }: { src: string; label: string }) {
   return (
-    <div className="qualitative-text-placeholder" aria-label={label}>
-      <i aria-hidden="true" />
-      <i aria-hidden="true" />
-      <i aria-hidden="true" />
-      <small aria-hidden="true">text placeholder</small>
+    <div aria-label={label} className="qualitative-task-video" role="img">
+      <img
+        alt=""
+        aria-hidden="true"
+        decoding="async"
+        src={assetPath(src)}
+      />
     </div>
   );
 }
@@ -1942,7 +2282,249 @@ function FlowArrow() {
   );
 }
 
+function TaskUnderstandingResults() {
+  const [taskPageIndex, setTaskPageIndex] = useState(0);
+  const [taskSamplesAreTransitioning, setTaskSamplesAreTransitioning] =
+    useState(false);
+  const [taskVideoFrameIndex, setTaskVideoFrameIndex] = useState(0);
+  const [taskVideoFramesAreReady, setTaskVideoFramesAreReady] = useState(false);
+  const [taskVideoMotionIsReduced, setTaskVideoMotionIsReduced] =
+    useState(false);
+
+  useEffect(() => {
+    let isCancelled = false;
+    const frameDecodes = taskQualitativeSamples.flatMap((sample) =>
+      Array.from({ length: TASK_VIDEO_FRAME_COUNT }, async (_, frameIndex) => {
+        const image = new window.Image();
+        image.src = assetPath(taskVideoFramePath(sample.key, frameIndex));
+
+        try {
+          await image.decode();
+        } catch {
+          // A failed decode should not prevent the remaining frames from playing.
+        }
+      }),
+    );
+
+    void Promise.all(frameDecodes).then(() => {
+      if (!isCancelled) {
+        setTaskVideoFramesAreReady(true);
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const motionPreference = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    );
+    const syncMotionPreference = () => {
+      setTaskVideoMotionIsReduced(motionPreference.matches);
+      if (motionPreference.matches) {
+        setTaskVideoFrameIndex(0);
+      }
+    };
+
+    syncMotionPreference();
+    motionPreference.addEventListener("change", syncMotionPreference);
+
+    return () => {
+      motionPreference.removeEventListener("change", syncMotionPreference);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!taskVideoFramesAreReady || taskVideoMotionIsReduced) {
+      return;
+    }
+
+    const frameTimer = window.setInterval(() => {
+      setTaskVideoFrameIndex(
+        (current) => (current + 1) % TASK_VIDEO_FRAME_COUNT,
+      );
+    }, TASK_VIDEO_FRAME_INTERVAL);
+
+    return () => window.clearInterval(frameTimer);
+  }, [taskVideoFramesAreReady, taskVideoMotionIsReduced]);
+
+  useEffect(() => {
+    if (!taskVideoFramesAreReady) {
+      return;
+    }
+
+    const fadeTimer = window.setTimeout(() => {
+      setTaskSamplesAreTransitioning(true);
+    }, TASK_SAMPLE_INTERVAL - TASK_SAMPLE_FADE_DURATION);
+
+    const swapTimer = window.setTimeout(() => {
+      setTaskPageIndex((current) => (current + 1) % taskSamplePageCount);
+      setTaskSamplesAreTransitioning(false);
+      setTaskVideoFrameIndex(0);
+    }, TASK_SAMPLE_INTERVAL);
+
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(swapTimer);
+    };
+  }, [taskPageIndex, taskVideoFramesAreReady]);
+
+  const nextTaskPageIndex = (taskPageIndex + 1) % taskSamplePageCount;
+  const visibleTransitionIsActive =
+    taskSamplesAreTransitioning && !taskVideoMotionIsReduced;
+
+  return (
+    <section className="qualitative-capability is-task">
+      <header className="qualitative-capability__header">
+        <div>
+          <h3>Task Understanding</h3>
+          <p>
+            An ordered frame sequence plays as a short clip and is decoded into
+            a task instruction.
+          </p>
+        </div>
+      </header>
+      <div
+        className={`qualitative-task-carousel${
+          taskSamplesAreTransitioning ? " is-transitioning" : ""
+        }`}
+      >
+        {[taskPageIndex, nextTaskPageIndex].map((pageIndex, layerIndex) => (
+          <div
+            aria-hidden={
+              layerIndex === 0
+                ? visibleTransitionIsActive
+                : !visibleTransitionIsActive
+            }
+            className={`qualitative-example-list qualitative-task-page ${
+              layerIndex === 0 ? "is-current" : "is-next"
+            }`}
+            key={layerIndex}
+          >
+            {taskQualitativeSamples
+              .slice(
+                pageIndex * TASK_SAMPLES_PER_PAGE,
+                (pageIndex + 1) * TASK_SAMPLES_PER_PAGE,
+              )
+              .map((sample, sampleOffset) => {
+                const sampleNumber =
+                  pageIndex * TASK_SAMPLES_PER_PAGE + sampleOffset + 1;
+                const frameIndex =
+                  layerIndex === 0 ? taskVideoFrameIndex : 0;
+
+                return (
+                  <article
+                    aria-label={`Task-understanding example ${sampleNumber}`}
+                    className="qualitative-example-row is-task-row"
+                    key={sample.key}
+                  >
+                    <div className="qualitative-flow is-task">
+                      <div className="qualitative-flow-group qualitative-task-input">
+                        <header>
+                          <strong>Task video</strong>
+                        </header>
+                        <TaskVideoFrame
+                          label={`Task-understanding example ${sampleNumber}: 30-frame task video`}
+                          src={taskVideoFramePath(sample.key, frameIndex)}
+                        />
+                      </div>
+                      <FlowArrow />
+                      <div className="qualitative-task-output">
+                        <div className="qualitative-task-instruction">
+                          <strong>Generated task description</strong>
+                          <p>{sample.prediction}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function QualitativeResults() {
+  const [worldRowIndex, setWorldRowIndex] = useState(0);
+  const [worldOutputFramesVisible, setWorldOutputFramesVisible] = useState(0);
+  const [worldSamplesAreTransitioning, setWorldSamplesAreTransitioning] =
+    useState(false);
+  const [goalPageIndex, setGoalPageIndex] = useState(0);
+  const [goalSamplesAreTransitioning, setGoalSamplesAreTransitioning] =
+    useState(false);
+
+  useEffect(() => {
+    for (const row of worldQualitativeRows) {
+      for (const kind of ["input", "prediction"] as const) {
+        for (const src of worldFramePaths(row.key, kind)) {
+          const image = new window.Image();
+          image.src = assetPath(src);
+        }
+      }
+    }
+
+    for (const sample of goalQualitativeSamples) {
+      for (const kind of ["input", "prediction"] as const) {
+        const image = new window.Image();
+        image.src = assetPath(goalFramePath(sample.key, kind));
+      }
+    }
+
+  }, []);
+
+  useEffect(() => {
+    if (worldOutputFramesVisible < WORLD_OUTPUT_FRAME_COUNT) {
+      const revealTimer = window.setTimeout(() => {
+        setWorldOutputFramesVisible((current) =>
+          Math.min(current + 1, WORLD_OUTPUT_FRAME_COUNT),
+        );
+      }, WORLD_OUTPUT_FRAME_INTERVAL);
+
+      return () => window.clearTimeout(revealTimer);
+    }
+
+    const fadeTimer = window.setTimeout(() => {
+      setWorldSamplesAreTransitioning(true);
+    }, WORLD_OUTPUT_FINAL_HOLD_DURATION - WORLD_SAMPLE_FADE_DURATION);
+
+    const nextRowTimer = window.setTimeout(() => {
+      setWorldOutputFramesVisible(0);
+      setWorldRowIndex(
+        (current) => (current + 1) % worldQualitativeRows.length,
+      );
+      setWorldSamplesAreTransitioning(false);
+    }, WORLD_OUTPUT_FINAL_HOLD_DURATION);
+
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(nextRowTimer);
+    };
+  }, [worldOutputFramesVisible]);
+
+  useEffect(() => {
+    const fadeTimer = window.setTimeout(() => {
+      setGoalSamplesAreTransitioning(true);
+    }, GOAL_SAMPLE_INTERVAL - GOAL_SAMPLE_FADE_DURATION);
+
+    const swapTimer = window.setTimeout(() => {
+      setGoalPageIndex((current) => (current + 1) % goalSamplePageCount);
+      setGoalSamplesAreTransitioning(false);
+    }, GOAL_SAMPLE_INTERVAL);
+
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(swapTimer);
+    };
+  }, [goalPageIndex]);
+
+  const nextWorldRowIndex =
+    (worldRowIndex + 1) % worldQualitativeRows.length;
+  const nextGoalPageIndex = (goalPageIndex + 1) % goalSamplePageCount;
+
   return (
     <div className="qualitative-results reveal">
       <section className="qualitative-capability is-world">
@@ -1955,65 +2537,77 @@ function QualitativeResults() {
             </p>
           </div>
         </header>
-        <div className="qualitative-example-list">
-          {worldQualitativeRows.map((row, index) => (
-            <article
-              className="qualitative-example-row is-world-row"
-              key={row.key}
-            >
-              <div className="qualitative-flow is-world">
-                <div className="qualitative-flow-group">
-                  <header>
-                    <strong>Past frames</strong>
-                  </header>
-                  <FrameStrip
-                    images={worldFramePaths(row.key, "input")}
-                    numbered={false}
-                    label={`World modeling row ${index + 1}: past frames`}
-                  />
-                  <div className="qualitative-action-placeholder">
-                    <strong>Action</strong>
-                    <div
-                      aria-label={`World modeling row ${index + 1}: six-dimensional action`}
-                    >
-                      {row.action.map((value, actionIndex) => (
-                        <span key={actionIndex}>{value}</span>
-                      ))}
+        <div
+          className={`qualitative-world-carousel${
+            worldSamplesAreTransitioning ? " is-transitioning" : ""
+          }`}
+        >
+          {[worldRowIndex, nextWorldRowIndex].map((rowIndex, layerIndex) => {
+            const worldRow = worldQualitativeRows[rowIndex];
+
+            return (
+              <div
+                aria-hidden={
+                  layerIndex === 0
+                    ? worldSamplesAreTransitioning
+                    : !worldSamplesAreTransitioning
+                }
+                className={`qualitative-example-list qualitative-world-page ${
+                  layerIndex === 0 ? "is-current" : "is-next"
+                }`}
+                key={layerIndex}
+              >
+                <article
+                  className="qualitative-example-row is-world-row"
+                  key={worldRow.key}
+                >
+                  <div className="qualitative-flow is-world">
+                    <div className="qualitative-flow-group">
+                      <header>
+                        <strong>Past frames</strong>
+                      </header>
+                      <FrameStrip
+                        images={worldFramePaths(worldRow.key, "input")}
+                        numbered={false}
+                        label={`World modeling sample ${rowIndex + 1}: past frames`}
+                      />
+                      <div className="qualitative-action-placeholder">
+                        <strong>Action</strong>
+                        <div
+                          aria-label={`World modeling sample ${rowIndex + 1}: six-dimensional action`}
+                        >
+                          {worldRow.action.map((value, actionIndex) => (
+                            <span key={actionIndex}>{value}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <FlowArrow />
+                    <div className="qualitative-world-output">
+                      <div className="qualitative-flow-group">
+                        <header>
+                          <strong>Generated next frames</strong>
+                        </header>
+                        <FrameStrip
+                          images={worldFramePaths(worldRow.key, "prediction")}
+                          numbered={false}
+                          label={`World modeling sample ${rowIndex + 1}: generated next frames`}
+                          visibleCount={
+                            layerIndex === 0 ? worldOutputFramesVisible : 0
+                          }
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-                <FlowArrow />
-                <div className="qualitative-world-output">
-                  <div className="qualitative-flow-group">
-                    <header>
-                      <strong>Predicted next frames</strong>
-                    </header>
-                    <FrameStrip
-                      images={worldFramePaths(row.key, "prediction")}
-                      numbered={false}
-                      label={`World modeling row ${index + 1}: predicted next frames`}
-                    />
-                  </div>
-                  <div className="qualitative-flow-group">
-                    <header>
-                      <strong>Ground truth next frames</strong>
-                    </header>
-                    <FrameStrip
-                      images={worldFramePaths(row.key, "target")}
-                      numbered={false}
-                      label={`World modeling row ${index + 1}: ground-truth next frames`}
-                    />
-                  </div>
-                </div>
+                </article>
               </div>
-            </article>
-          ))}
+            );
+          })}
         </div>
       </section>
 
       <section className="qualitative-capability is-goal">
         <header className="qualitative-capability__header">
-          <span>02 · Goal visualization</span>
           <div>
             <h3>Goal-State Prediction</h3>
             <p>
@@ -2022,108 +2616,343 @@ function QualitativeResults() {
             </p>
           </div>
         </header>
-        <div className="qualitative-example-list">
-          {[1, 2].map((example) => (
-            <article className="qualitative-example-row" key={example}>
-              <span className="qualitative-example-index">
-                Example {String(example).padStart(2, "0")}
-              </span>
-              <div className="qualitative-flow is-goal">
-                <div className="qualitative-flow-group">
-                  <header>
-                    <strong>Initial state</strong>
-                    <span>Image input</span>
-                  </header>
-                  <SingleFramePlaceholder
-                    label={`Goal-state example ${example}: initial-state image placeholder`}
-                  />
-                </div>
-                <div className="qualitative-flow-group">
-                  <header>
-                    <strong>Instruction</strong>
-                    <span>Text input</span>
-                  </header>
-                  <TextPlaceholder
-                    label={`Goal-state example ${example}: instruction placeholder`}
-                  />
-                </div>
-                <FlowArrow />
-                <div className="qualitative-flow-group">
-                  <header>
-                    <strong>Predicted goal state</strong>
-                    <span>Image generation</span>
-                  </header>
-                  <SingleFramePlaceholder
-                    label={`Goal-state example ${example}: generated goal-state placeholder`}
-                  />
-                </div>
-              </div>
-            </article>
+        <div
+          className={`qualitative-goal-carousel${
+            goalSamplesAreTransitioning ? " is-transitioning" : ""
+          }`}
+        >
+          {[goalPageIndex, nextGoalPageIndex].map((pageIndex, layerIndex) => (
+            <div
+              aria-hidden={
+                layerIndex === 0
+                  ? goalSamplesAreTransitioning
+                  : !goalSamplesAreTransitioning
+              }
+              className={`qualitative-example-list qualitative-goal-page ${
+                layerIndex === 0 ? "is-current" : "is-next"
+              }`}
+              key={layerIndex}
+            >
+              {goalQualitativeSamples
+                .slice(
+                  pageIndex * GOAL_SAMPLES_PER_PAGE,
+                  (pageIndex + 1) * GOAL_SAMPLES_PER_PAGE,
+                )
+                .map((sample, sampleOffset) => {
+                  const sampleNumber =
+                    pageIndex * GOAL_SAMPLES_PER_PAGE + sampleOffset + 1;
+
+                  return (
+                    <article
+                      aria-label={`Goal-state example ${sampleNumber}`}
+                      className="qualitative-example-row is-goal-row"
+                      key={sample.key}
+                    >
+                      <div className="qualitative-flow is-goal">
+                        <div className="qualitative-flow-group qualitative-goal-input">
+                          <header>
+                            <strong>Initial state</strong>
+                          </header>
+                          <SingleFrameImage
+                            label={`Goal-state example ${sampleNumber}: initial state`}
+                            src={goalFramePath(sample.key, "input")}
+                          />
+                          <div className="qualitative-goal-instruction">
+                            <strong>Instruction</strong>
+                            <p>{sample.instruction}</p>
+                          </div>
+                        </div>
+                        <FlowArrow />
+                        <div className="qualitative-goal-output">
+                          <div className="qualitative-flow-group">
+                            <header>
+                              <strong>Generated goal state</strong>
+                            </header>
+                            <SingleFrameImage
+                              label={`Goal-state example ${sampleNumber}: generated goal state`}
+                              src={goalFramePath(sample.key, "prediction")}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+            </div>
           ))}
         </div>
       </section>
 
-      <section className="qualitative-capability is-task">
-        <header className="qualitative-capability__header">
-          <span>03 · Language reconstruction</span>
-          <div>
-            <h3>Task Understanding</h3>
-            <p>
-              An ordered frame sequence plays as a short clip and is decoded
-              into a task instruction.
-            </p>
-          </div>
+      <TaskUnderstandingResults />
+    </div>
+  );
+}
+
+const liberoDemonstrations = [
+  {
+    key: "spatial",
+    title: "Spatial",
+    videos: [
+      "/assets/benchmark/libero/spatial/spatial_task00_init000_steps106.mp4",
+      "/assets/benchmark/libero/spatial/spatial_task04_init024_steps121.mp4",
+      "/assets/benchmark/libero/spatial/spatial_task06_init037_steps108.mp4",
+      "/assets/benchmark/libero/spatial/spatial_task09_init049_steps119.mp4",
+    ],
+  },
+  {
+    key: "object",
+    title: "Object",
+    videos: [
+      "/assets/benchmark/libero/object/object_task00_init000_steps182.mp4",
+      "/assets/benchmark/libero/object/object_task04_init024_steps142.mp4",
+      "/assets/benchmark/libero/object/object_task06_init037_steps169.mp4",
+      "/assets/benchmark/libero/object/object_task09_init049_steps137.mp4",
+    ],
+  },
+  {
+    key: "goal",
+    title: "Goal",
+    videos: [
+      "/assets/benchmark/libero/goal/goal_task00_init000_steps151.mp4",
+      "/assets/benchmark/libero/goal/goal_task04_init024_steps081.mp4",
+      "/assets/benchmark/libero/goal/goal_task06_init037_steps091.mp4",
+      "/assets/benchmark/libero/goal/goal_task09_init049_steps119.mp4",
+    ],
+  },
+  {
+    key: "long",
+    title: "Long",
+    videos: [
+      "/assets/benchmark/libero/long/long_task00_init000_steps287.mp4",
+      "/assets/benchmark/libero/long/long_task04_init024_steps252.mp4",
+      "/assets/benchmark/libero/long/long_task06_init037_steps210.mp4",
+      "/assets/benchmark/libero/long/long_task09_init049_steps238.mp4",
+    ],
+  },
+] as const;
+
+const liberoPlusDemonstrations = [
+  {
+    key: "camera",
+    title: "Camera",
+    videos: [
+      "/assets/benchmark/libero-plus/camera_viewpoints/success_01__libero_spatial__task_0713__difficulty_1.mp4",
+      "/assets/benchmark/libero-plus/camera_viewpoints/success_03__libero_spatial__task_0706__difficulty_1.mp4",
+    ],
+  },
+  {
+    key: "robot",
+    title: "Robot",
+    videos: [
+      "/assets/benchmark/libero-plus/robot_initial_states/success_01__libero_spatial__task_0460__difficulty_1.mp4",
+      "/assets/benchmark/libero-plus/robot_initial_states/success_03__libero_spatial__task_0292__difficulty_1.mp4",
+    ],
+  },
+  {
+    key: "language",
+    title: "Language",
+    videos: [
+      "/assets/benchmark/libero-plus/language_instructions/success_01__libero_spatial__task_1291__difficulty_1.mp4",
+      "/assets/benchmark/libero-plus/language_instructions/success_03__libero_spatial__task_1004__difficulty_1.mp4",
+    ],
+  },
+  {
+    key: "light",
+    title: "Light",
+    videos: [
+      "/assets/benchmark/libero-plus/light_conditions/success_01__libero_spatial__task_2303__difficulty_1.mp4",
+      "/assets/benchmark/libero-plus/light_conditions/success_03__libero_spatial__task_2265__difficulty_1.mp4",
+    ],
+  },
+  {
+    key: "background",
+    title: "Background",
+    videos: [
+      "/assets/benchmark/libero-plus/background_textures/success_01__libero_spatial__task_0022__difficulty_1.mp4",
+      "/assets/benchmark/libero-plus/background_textures/success_03__libero_spatial__task_0107__difficulty_1.mp4",
+    ],
+  },
+  {
+    key: "noise",
+    title: "Noise",
+    videos: [
+      "/assets/benchmark/libero-plus/sensor_noise/success_01__libero_spatial__task_1525__difficulty_1.mp4",
+      "/assets/benchmark/libero-plus/sensor_noise/success_03__libero_spatial__task_1599__difficulty_1.mp4",
+    ],
+  },
+  {
+    key: "layout",
+    title: "Layout",
+    videos: [
+      "/assets/benchmark/libero-plus/objects_layout/success_01__libero_spatial__task_1980__difficulty_1.mp4",
+      "/assets/benchmark/libero-plus/objects_layout/success_03__libero_spatial__task_1977__difficulty_1.mp4",
+    ],
+  },
+] as const;
+
+const realWorldDemonstrations = [
+  "/assets/benchmark/realworld/real_cubestack.mp4",
+  "/assets/benchmark/realworld/real_pnp1.mp4",
+  "/assets/benchmark/realworld/real_pnp2.mp4",
+  "/assets/benchmark/realworld/real_pnp3.mp4",
+  "/assets/benchmark/realworld/real_pnp4.mp4",
+  "/assets/benchmark/realworld/real_table.mp4",
+  "/assets/benchmark/realworld/real_table1.mp4",
+  "/assets/benchmark/realworld/real_table2.mp4",
+  "/assets/benchmark/realworld/real_table3.mp4",
+  "/assets/benchmark/realworld/real_table4.mp4",
+] as const;
+
+function DemonstrationVideoGrid({
+  label,
+  variant,
+  columns,
+}: {
+  label: string;
+  variant: "libero" | "libero-plus";
+  columns: ReadonlyArray<{
+    key: string;
+    title: string;
+    videos: readonly string[];
+  }>;
+}) {
+  return (
+    <div
+      aria-label={`${label} demonstration grid`}
+      className="demonstration-grid-scroll"
+      role="region"
+      tabIndex={0}
+    >
+      <div
+        className={`demonstration-video-grid is-${variant}`}
+        data-demonstration-grid={variant}
+      >
+        {columns.map((column) => (
+          <article className="demonstration-video-column" key={column.key}>
+            <h4>{column.title}</h4>
+            <div className="demonstration-video-stack">
+              {column.videos.map((src, index) => (
+                <video
+                  aria-label={`${label} ${column.title} demonstration ${index + 1}`}
+                  autoPlay
+                  key={src}
+                  loop
+                  muted
+                  onLoadedMetadata={(event) => {
+                    if (variant === "libero") {
+                      event.currentTarget.defaultPlaybackRate = 2;
+                      event.currentTarget.playbackRate = 2;
+                    }
+                  }}
+                  playsInline
+                  preload="metadata"
+                  ref={(video) => {
+                    if (variant === "libero" && video) {
+                      video.defaultPlaybackRate = 2;
+                      video.playbackRate = 2;
+                    }
+                  }}
+                  src={assetPath(src)}
+                />
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DemonstrationResults() {
+  return (
+    <div className="demonstration-results reveal">
+      <section
+        aria-labelledby="demonstration-libero-title"
+        className="demonstration-subsection"
+      >
+        <header className="demonstration-subsection__header">
+          <h3 id="demonstration-libero-title">LIBERO</h3>
         </header>
-        <div className="qualitative-example-list">
-          {[1, 2].map((example) => (
-            <article className="qualitative-example-row" key={example}>
-              <span className="qualitative-example-index">
-                Example {String(example).padStart(2, "0")}
-              </span>
-              <div className="qualitative-flow is-task">
-                <div className="qualitative-flow-group">
-                  <header>
-                    <strong>Task video frames</strong>
-                    <span>Sequential playback</span>
-                  </header>
-                  <FrameStrip
-                    count={6}
-                    playback
-                    label={`Task-understanding example ${example}: six-frame video placeholder`}
-                  />
-                </div>
-                <FlowArrow />
-                <div className="qualitative-flow-group">
-                  <header>
-                    <strong>Generated instruction</strong>
-                    <span>Text generation</span>
-                  </header>
-                  <TextPlaceholder
-                    label={`Task-understanding example ${example}: generated instruction placeholder`}
-                  />
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
+        <DemonstrationVideoGrid
+          columns={liberoDemonstrations}
+          label="LIBERO"
+          variant="libero"
+        />
       </section>
 
-      <p className="qualitative-results__note">
-        Goal-state and task-understanding media remain intentionally omitted in
-        this draft. Their outlined slots are ready for final assets.
-      </p>
+      <section
+        aria-labelledby="demonstration-libero-plus-title"
+        className="demonstration-subsection"
+      >
+        <header className="demonstration-subsection__header">
+          <h3 id="demonstration-libero-plus-title">LIBERO+</h3>
+        </header>
+        <DemonstrationVideoGrid
+          columns={liberoPlusDemonstrations}
+          label="LIBERO+"
+          variant="libero-plus"
+        />
+      </section>
+
+      <section
+        aria-labelledby="demonstration-real-world-title"
+        className="demonstration-subsection"
+      >
+        <header className="demonstration-subsection__header is-real-world">
+          <h3 id="demonstration-real-world-title">
+            Real-World Manipulation
+          </h3>
+          <p className="demonstration-real-world-note">
+            2× · autonomous
+          </p>
+        </header>
+        <div
+          aria-label="Real-World Manipulation demonstration grid"
+          className="demonstration-grid-scroll"
+          role="region"
+          tabIndex={0}
+        >
+          <div
+            className="demonstration-real-world-grid"
+            data-demonstration-grid="real-world"
+          >
+            {realWorldDemonstrations.map((src, index) => (
+              <video
+                aria-label={`Real-World Manipulation demonstration ${index + 1}`}
+                autoPlay
+                key={src}
+                loop
+                muted
+                onLoadedMetadata={(event) => {
+                  event.currentTarget.defaultPlaybackRate = 2;
+                  event.currentTarget.playbackRate = 2;
+                }}
+                playsInline
+                preload="metadata"
+                ref={(video) => {
+                  if (video) {
+                    video.defaultPlaybackRate = 2;
+                    video.playbackRate = 2;
+                  }
+                }}
+                src={assetPath(src)}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
 
 function BenchmarkTable({
   title,
-  caption,
+  description,
   columns,
   rows,
 }: {
   title: string;
-  caption: string;
+  description?: string;
   columns: string[];
   rows: Array<{
     model: string;
@@ -2132,21 +2961,42 @@ function BenchmarkTable({
     ours?: boolean;
   }>;
 }) {
+  const rowGroups = rows.reduce<
+    Array<{ family: string; rows: typeof rows }>
+  >((groups, row) => {
+    const currentGroup = groups.at(-1);
+
+    if (!currentGroup || currentGroup.family !== row.family) {
+      groups.push({ family: row.family, rows: [row] });
+    } else {
+      currentGroup.rows.push(row);
+    }
+
+    return groups;
+  }, []);
+
   return (
-    <article className="benchmark-table reveal">
+    <article
+      className={`benchmark-table reveal${columns.length > 5 ? " is-wide" : ""}`}
+    >
       <header>
-        <div>
-          <span>{caption}</span>
+        <div className="benchmark-table__heading">
           <h3>{title}</h3>
+          {description && <p>{description}</p>}
         </div>
-        <p>Success rate (%)</p>
+        <p className="benchmark-table__metric">Success rate (%)</p>
       </header>
-      <div className="table-scroll">
+      <div
+        aria-label={`${title} benchmark results`}
+        className="table-scroll"
+        role="region"
+        tabIndex={0}
+      >
         <table>
+          <caption className="sr-only">{title} — Success rate (%)</caption>
           <thead>
             <tr>
               <th scope="col">Model</th>
-              <th scope="col">Family</th>
               {columns.map((column) => (
                 <th scope="col" key={column}>
                   {column}
@@ -2154,54 +3004,29 @@ function BenchmarkTable({
               ))}
             </tr>
           </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr className={row.ours ? "is-ours" : ""} key={row.model}>
-                <th scope="row">{row.model}</th>
-                <td>{row.family}</td>
-                {row.values.map((value, index) => (
-                  <td key={`${row.model}-${columns[index]}`}>{value}</td>
-                ))}
+          {rowGroups.map((group) => (
+            <tbody aria-label={group.family} key={group.family}>
+              <tr className="benchmark-family-row">
+                <th colSpan={columns.length + 1} scope="rowgroup">
+                  {group.family}
+                </th>
               </tr>
-            ))}
-          </tbody>
+              {group.rows.map((row) => (
+                <tr
+                  className={`benchmark-model-row${row.ours ? " is-ours" : ""}`}
+                  key={row.model}
+                >
+                  <th scope="row">{row.model}</th>
+                  {row.values.map((value, index) => (
+                    <td key={`${row.model}-${columns[index]}`}>{value}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          ))}
         </table>
       </div>
     </article>
-  );
-}
-
-function RealWorldPlaceholders() {
-  const tasks = [
-    { name: "Fruit PnP", score: "97.5" },
-    { name: "Cube Sort", score: "85.5" },
-    { name: "Cube Stack", score: "62.0" },
-    { name: "Color-Ordered Stack", score: "68.5" },
-  ];
-  return (
-    <div className="real-world-placeholders reveal">
-      <div className="real-world-task-grid">
-        {tasks.map((task) => (
-          <div className="real-world-task" key={task.name}>
-            <header>
-              <strong>{task.name}</strong>
-              <span>{task.score}% SR</span>
-            </header>
-            <div>
-              {Array.from({ length: 4 }, (_, index) => (
-                <i key={index}>
-                  <span>{index + 1}</span>
-                </i>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-      <p className="figure-note">
-        Real-world average: 78.4%. Video and frame assets are intentionally empty
-        in the current structural draft.
-      </p>
-    </div>
   );
 }
 
@@ -2420,7 +3245,7 @@ function LegacyObjectiveFigure({
                 <span
                   className="objective-output-value is-image"
                   role="img"
-                  aria-label="Predicted goal state"
+                  aria-label="Generated goal state"
                   aria-hidden={activeStage !== 10}
                   style={
                     {
@@ -2788,26 +3613,170 @@ function ThemeToggle() {
   );
 }
 
+function PolicyCapabilityExample() {
+  return (
+    <div
+      aria-label="Policy example from current state, instruction, and goal state to action sequence"
+      className="capability-policy-example"
+    >
+      <div className="capability-policy-example__inputs">
+        <figure className="capability-policy-example__image">
+          <figcaption>Current state</figcaption>
+          <img
+            alt="Robot workspace before placing the glue stick in the drawer"
+            decoding="async"
+            loading="lazy"
+            src={assetPath(policyCapabilityExample.input)}
+          />
+        </figure>
+        <div className="capability-policy-example__instruction">
+          <strong>Instruction</strong>
+          <span>{policyCapabilityExample.instruction}</span>
+        </div>
+        <figure className="capability-policy-example__image">
+          <figcaption>Goal state</figcaption>
+          <img
+            alt="Robot workspace with the glue stick inside the open drawer"
+            decoding="async"
+            loading="lazy"
+            src={assetPath(policyCapabilityExample.goal)}
+          />
+        </figure>
+      </div>
+      <span className="capability-policy-example__arrow" aria-hidden="true">
+        <i />
+      </span>
+      <div className="capability-policy-example__action">
+        <strong>Action sequence</strong>
+        <div aria-label="Six-dimensional action sequence">
+          {policyCapabilityExample.action.map((value) => (
+            <span key={value}>{value}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WorldCapabilityExample() {
+  return (
+    <div
+      aria-label="World modeling example from current state, instruction, and action to generated next state"
+      className="capability-world-example"
+    >
+      <figure className="capability-world-example__image">
+        <figcaption>Current state</figcaption>
+        <img
+          alt="Robot holding a purple plush toy over a bowl"
+          decoding="async"
+          loading="lazy"
+          src={assetPath(worldCapabilityExample.input)}
+        />
+      </figure>
+      <div className="capability-world-example__instruction">
+        <strong>Instruction</strong>
+        <span>{worldCapabilityExample.instruction}</span>
+      </div>
+      <div className="capability-world-example__action">
+        <strong>Action</strong>
+        <div aria-label="Six-dimensional robot action">
+          {worldCapabilityExample.action.map((value) => (
+            <span key={value}>{value}</span>
+          ))}
+        </div>
+      </div>
+      <span className="capability-world-example__arrow" aria-hidden="true">
+        <i />
+      </span>
+      <figure className="capability-world-example__image capability-world-example__output">
+        <figcaption>Generated next state</figcaption>
+        <img
+          alt="Generated next state after the purple plush toy is lifted from the bowl"
+          decoding="async"
+          loading="lazy"
+          src={assetPath(worldCapabilityExample.generated)}
+        />
+      </figure>
+    </div>
+  );
+}
+
+function GoalStateCapabilityExample() {
+  return (
+    <div
+      aria-label="Goal-state prediction example from initial state and instruction to generated goal state"
+      className="capability-goal-example"
+    >
+      <div className="capability-goal-example__inputs">
+        <figure className="capability-goal-example__image">
+          <figcaption>Initial state</figcaption>
+          <img
+            alt="Folded white towel on the table before the task"
+            decoding="async"
+            loading="lazy"
+            src={assetPath(goalCapabilityExample.input)}
+          />
+        </figure>
+        <div className="capability-goal-example__instruction">
+          <strong>Instruction</strong>
+          <span>{goalCapabilityExample.instruction}</span>
+        </div>
+      </div>
+      <span className="capability-goal-example__arrow" aria-hidden="true">
+        <i />
+      </span>
+      <figure className="capability-goal-example__image capability-goal-example__output">
+        <figcaption>Generated goal state</figcaption>
+        <img
+          alt="Generated goal state with the white towel unfolded on the table"
+          decoding="async"
+          loading="lazy"
+          src={assetPath(goalCapabilityExample.generated)}
+        />
+      </figure>
+    </div>
+  );
+}
+
+function TaskUnderstandingCapabilityExample() {
+  return (
+    <div
+      aria-label="Task understanding example from ordered video frames to a generated task description"
+      className="capability-task-example"
+    >
+      <div className="capability-task-example__frames">
+        <strong>Task video frames</strong>
+        <div aria-label="Five ordered task video frames">
+          {taskCapabilityExample.frames.map((frame, index) => (
+            <img
+              alt={`Task video frame ${index + 1} of the robot moving the sink faucet`}
+              decoding="async"
+              key={frame}
+              loading="lazy"
+              src={assetPath(frame)}
+            />
+          ))}
+        </div>
+      </div>
+      <span className="capability-task-example__arrow" aria-hidden="true">
+        <i />
+      </span>
+      <div className="capability-task-example__description">
+        <strong>Generated task description</strong>
+        <span>{taskCapabilityExample.description}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
-  const [activeObjective, setActiveObjective] =
-    useState<ObjectiveKey>("policy");
   const [overviewObjectiveKey, setOverviewObjectiveKey] =
     useState<ObjectiveKey>("policy");
-  const [stage, setStage] = useState(0);
   const [overviewStage, setOverviewStage] = useState(0);
   const [overviewPlaybackId, setOverviewPlaybackId] = useState(0);
   const [activeSection, setActiveSection] = useState<string | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const overviewTimerTokenRef = useRef(0);
-  const objective = objectives[activeObjective];
   const overviewObjective = objectives[overviewObjectiveKey];
-  const trainingStage = Math.min(stage, 4);
-
-  const selectObjective = useCallback((key: ObjectiveKey) => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setActiveObjective(key);
-    setStage(0);
-  }, []);
 
   const selectOverviewObjective = useCallback((key: ObjectiveKey) => {
     overviewTimerTokenRef.current += 1;
@@ -2815,23 +3784,6 @@ export default function Home() {
     setOverviewStage(0);
     setOverviewPlaybackId((value) => value + 1);
   }, []);
-
-  useEffect(() => {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) {
-      timerRef.current = setTimeout(() => setStage(4), 0);
-      return () => {
-        if (timerRef.current) clearTimeout(timerRef.current);
-      };
-    }
-    timerRef.current = setTimeout(
-      () => setStage((value) => (value >= 4 ? 0 : value + 1)),
-      stage === 0 ? 650 : stage === 4 ? 1250 : 760,
-    );
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [activeObjective, stage]);
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -2972,10 +3924,10 @@ export default function Home() {
             </p>
             <div className="hero__links">
               <a href={assetPath("/paper.pdf")}>Paper</a>
-              <button type="button" disabled title="Model release pending">
+              <button type="button" disabled>
                 Model
               </button>
-              <button type="button" disabled title="Code release pending">
+              <button type="button" disabled>
                 Code
               </button>
             </div>
@@ -3042,16 +3994,49 @@ export default function Home() {
             <SectionLead
               index="02"
               eyebrow="Capabilities"
-              title="Four conditional views of the same trajectory"
-              body="Every diagram below follows the paper’s Figure 1 and Figure 4 convention: visible inputs sit below the shared model and the queried output sits above it. The horizontal lanes keep text, vision, action, and optional sensor context comparable across objectives."
+              title="Four Capabilities for Robotics, One Unified Model"
+              body="Dynin-Robotics unifies policy generation, world modeling, task understanding, and goal-state prediction in a single masked-diffusion backbone. Each capability is realized as a different conditional denoising query over the same multimodal robot trajectory."
             />
-            <div className="capability-stack">
-              {capabilityChapters.map((chapter) => (
-                <CapabilityChapter
-                  number={chapter.number}
-                  objective={chapter.objective}
-                  key={chapter.objective.key}
-                />
+            <div className="capability-summary-grid reveal">
+              {capabilitySummaryCards.map((capability) => (
+                <article
+                  className="capability-summary-card"
+                  key={capability.key}
+                >
+                  <h3>{capability.title}</h3>
+                  <p>{capability.body}</p>
+                  <dl className="capability-summary-card__io">
+                    <div>
+                      <dt>Input</dt>
+                      <dd>
+                        {capability.inputs.map((input) => (
+                          <span
+                            className={`is-${input.modality}`}
+                            key={input.label}
+                          >
+                            {input.label}
+                          </span>
+                        ))}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Output</dt>
+                      <dd>
+                        <span className={`is-${capability.output.modality}`}>
+                          {capability.output.label}
+                        </span>
+                      </dd>
+                    </div>
+                  </dl>
+                  {capability.key === "policy" && <PolicyCapabilityExample />}
+                  {capability.key === "world" && <WorldCapabilityExample />}
+                  {capability.key === "goal" && (
+                    <GoalStateCapabilityExample />
+                  )}
+                  {capability.key === "instruction" && (
+                    <TaskUnderstandingCapabilityExample />
+                  )}
+                </article>
               ))}
             </div>
           </div>
@@ -3069,67 +4054,15 @@ export default function Home() {
           </div>
         </section>
 
-        <section
-          className="section section--training"
-          hidden
-          id="training"
-        >
+        <section className="section section--training" id="training">
           <div className="container">
             <SectionLead
               index="04"
               eyebrow="Unified objective training"
-              title="Training changes the mask, not the backbone"
-              body="For a sampled objective, conditioning tokens remain visible while masking is applied inside the selected target span. Cross-entropy is computed only on masked target positions. The animation shows iterative prediction, confidence-based commitment, and remasking."
+              title="Omnimodal Unified Objective Training"
+              body="A single Dynin-Robotics backbone learns policy, world modeling, goal-state prediction, and instruction understanding by changing which trajectory tokens are visible, optional, or masked for prediction."
             />
-            <div className="training-explorer reveal">
-              <ObjectiveTabs
-                active={activeObjective}
-                onSelect={selectObjective}
-                controlsPrefix="training-objective"
-              />
-              <div
-                className="training-panel"
-                role="tabpanel"
-                id={`training-objective-${activeObjective}`}
-                aria-labelledby={`training-objective-tab-${activeObjective}`}
-                tabIndex={0}
-              >
-                <div className="training-panel__meta">
-                  <div>
-                    <span>{objective.index} {objective.title}</span>
-                    <strong>{objective.targetLabel}</strong>
-                  </div>
-                  <p>
-                    predict → commit high-confidence tokens → remask uncertainty →
-                    repeat
-                  </p>
-                </div>
-                <div className="figure-scroll">
-                  <UnifiedQueryFigure
-                    objective={objective}
-                    stage={trainingStage}
-                    caption="Figure 4 training-objective mapping. Optional conditions use dashed borders; inactive variables remain visible only to preserve a stable comparison grid."
-                  />
-                </div>
-                <div className="training-progress">
-                  <span>Iterative denoising</span>
-                  <div
-                    role="progressbar"
-                    aria-valuemin={0}
-                    aria-valuemax={4}
-                    aria-valuenow={trainingStage}
-                    aria-label={`${objective.title} denoising progress`}
-                  >
-                    <i style={{ width: `${(trainingStage / 4) * 100}%` }} />
-                  </div>
-                  <b>
-                    {trainingStage === 4
-                      ? "complete"
-                      : `pass ${trainingStage + 1}`}
-                  </b>
-                </div>
-              </div>
-            </div>
+            <TrainingObjectiveGrid />
           </div>
         </section>
 
@@ -3145,10 +4078,25 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="section section--examples" id="examples">
+        <section
+          className="section section--demonstrations"
+          id="demonstrations"
+        >
           <div className="container">
             <SectionLead
               index="06"
+              eyebrow="Demonstrations"
+              title="Demonstrations"
+              body="Demonstration rollouts across LIBERO, LIBERO+, and real-world manipulation."
+            />
+            <DemonstrationResults />
+          </div>
+        </section>
+
+        <section className="section section--examples" id="examples">
+          <div className="container">
+            <SectionLead
+              index="07"
               eyebrow="Qualitative examples"
               title="Examples"
               body="Qualitative results show how Dynin-Robotics predicts visual futures, imagines instruction-conditioned goal states, and reconstructs task language from frame sequences."
@@ -3157,77 +4105,212 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="section section--real-world" id="real-world">
-          <div className="container">
-            <SectionLead
-              index="07"
-              eyebrow="Real-world evaluation"
-              title="Real-World Task Sequences"
-              body="Four Franka Research 3 tasks are reserved as independent four-frame sequences. Final videos can be inserted without changing the layout."
-            />
-            <RealWorldPlaceholders />
-          </div>
-        </section>
-
         <section className="section section--performance" id="performance">
           <div className="container">
             <SectionLead
               index="08"
               eyebrow="Performance"
-              title="Results in the context of major model families"
+              title="Benchmark Results"
               body="The selected comparison rows below retain the paper’s model-family grouping. LIBERO is close to saturation, while LIBERO-Plus more clearly exposes robustness to camera, embodiment, language, lighting, background, noise, and layout shifts."
             />
-            <BenchmarkTable
-              title="LIBERO"
-              caption="Paper Table 2 · selected major baselines"
-              columns={["Spatial", "Object", "Goal", "Long", "Average ↑"]}
-              rows={liberoRows}
-            />
-            <BenchmarkTable
-              title="LIBERO-Plus · zero-shot"
-              caption="Paper Table 3 · selected major baselines"
-              columns={[
-                "Camera",
-                "Robot",
-                "Language",
-                "Light",
-                "Background",
-                "Noise",
-                "Layout",
-                "Average ↑",
-              ]}
-              rows={liberoPlusRows}
-            />
+            <div className="benchmark-table-list">
+              <BenchmarkTable
+                title="LIBERO"
+                columns={["Spatial", "Object", "Goal", "Long", "AVG ↑"]}
+                rows={liberoRows}
+              />
+              <BenchmarkTable
+                title="LIBERO-Plus"
+                columns={[
+                  "Camera",
+                  "Robot",
+                  "Language",
+                  "Light",
+                  "Background",
+                  "Noise",
+                  "Layout",
+                  "AVG ↑",
+                ]}
+                rows={liberoPlusRows}
+              />
+            </div>
 
-            <div className="performance-grid">
-              <article className="ablation-card reveal">
-                <header>
-                  <span>Unified training · Table 11</span>
-                  <h3>Objective mixture and instruction-shift robustness</h3>
+            <div className="performance-subsections">
+              <section
+                className="performance-subsection reveal"
+                aria-labelledby="ablation-study-title"
+              >
+                <header className="performance-subsection__header">
+                  <h3 id="ablation-study-title">Ablation Study</h3>
+                  <p>
+                    We ablate both unified post-training objectives and
+                    inference strategies on VLABench to examine how
+                    complementary supervision and inference-time composition
+                    affect robustness to out-of-distribution instructions. ID
+                    and OOD results are shown together with the reported OOD
+                    gap and effective throughput.
+                  </p>
                 </header>
-                <div className="ablation-list">
-                  {objectiveAblation.map((item, index) => (
-                    <div key={item.label}>
-                      <span>0{index + 1}</span>
-                      <strong>{item.label}</strong>
-                      <p>OOD {item.ood}</p>
-                      <b>{item.gap} gap</b>
+                <div className="ablation-study-grid">
+                  <article className="ablation-panel benchmark-table is-training-ablation">
+                    <header className="ablation-panel__header">
+                      <h4>Training Objective Ablation</h4>
+                    </header>
+                    <div
+                      className="table-scroll ablation-table-scroll"
+                      role="region"
+                      aria-label="Training objective ablation results"
+                      tabIndex={0}
+                    >
+                      <table className="ablation-data-table">
+                        <caption className="sr-only">
+                          Training objective ablation on VLABench
+                        </caption>
+                        <thead>
+                          <tr>
+                            <th scope="col">Training variant</th>
+                            <th scope="col">ID</th>
+                            <th scope="col">OOD</th>
+                            <th scope="col">Gap ↓</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {objectiveAblation.map((item) => (
+                            <tr className="training-ablation-row" key={item.label}>
+                              <th scope="row">{item.label}</th>
+                              <td>{item.id}</td>
+                              <td>{item.ood}</td>
+                              <td>{item.gap}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
+                  </article>
+
+                  <article className="ablation-panel benchmark-table is-inference-ablation">
+                    <header className="ablation-panel__header">
+                      <h4>Inference Ablation Study</h4>
+                    </header>
+                    <div
+                      className="table-scroll ablation-table-scroll"
+                      role="region"
+                      aria-label="Inference ablation results"
+                      tabIndex={0}
+                    >
+                      <table className="ablation-data-table">
+                        <caption className="sr-only">
+                          Inference strategy ablation on VLABench
+                        </caption>
+                        <thead>
+                          <tr>
+                            <th scope="col">Inference variant</th>
+                            <th scope="col">ID</th>
+                            <th scope="col">OOD</th>
+                            <th scope="col">Gap ↓</th>
+                            <th scope="col">Effective TPS ↑</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {inferenceAblationResults.map((item) => (
+                            <tr
+                              className="inference-ablation-row"
+                              key={item.variant}
+                            >
+                              <th scope="row">{item.variant}</th>
+                              <td>{item.id}</td>
+                              <td>{item.ood}</td>
+                              <td>{item.gap}</td>
+                              <td>{item.effectiveTps}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </article>
+                </div>
+              </section>
+
+              <section
+                className="performance-subsection reveal"
+                aria-labelledby="acceleration-title"
+              >
+                <header className="performance-subsection__header">
+                  <h3 id="acceleration-title">Acceleration</h3>
+                  <p>
+                    Block-wise dInfer decoding increases action-token throughput
+                    with longer parallel decoding blocks.
+                  </p>
+                </header>
+                <div className="acceleration-comparison">
+                  {accelerationResults.map((item) => (
+                    <article key={item.label}>
+                      <span>{item.label}</span>
+                      <div className="acceleration-comparison__value">
+                        <strong>{item.effectiveTps}</strong>
+                        <small>({item.speedup})</small>
+                      </div>
+                      <p>Effective TPS</p>
+                    </article>
                   ))}
                 </div>
-                <p>
-                  In this sequential ablation, the OOD gap decreases from 13.27
-                  to 2.33 points as world modeling, task understanding, and
-                  goal-state prediction are added.
-                </p>
-              </article>
+                <div className="acceleration-baselines">
+                  <h4>Other Models</h4>
+                  <div
+                    aria-label="Effective TPS of comparison models"
+                    className="acceleration-baselines__scroll"
+                    role="region"
+                    tabIndex={0}
+                  >
+                    <table>
+                      <caption className="sr-only">
+                        Effective TPS of vision-language and mask diffusion
+                        comparison models
+                      </caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Model</th>
+                          <th scope="col">Effective TPS ↑</th>
+                        </tr>
+                      </thead>
+                      {accelerationBaselineGroups.map((group) => (
+                        <tbody aria-label={group.family} key={group.family}>
+                          <tr className="acceleration-baselines__family">
+                            <th colSpan={2} scope="rowgroup">
+                              {group.family}
+                            </th>
+                          </tr>
+                          {group.rows.map((row) => (
+                            <tr
+                              className="acceleration-baselines__model"
+                              key={row.model}
+                            >
+                              <th scope="row">{row.model}</th>
+                              <td>{row.effectiveTps}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      ))}
+                    </table>
+                  </div>
+                </div>
+              </section>
 
-              <article className="vlabench-card reveal">
-                <header>
-                  <span>VLABench diagnostic · Table 4</span>
-                  <h3>VLM and video-model priors fail differently</h3>
+              <section
+                className="performance-subsection reveal"
+                aria-labelledby="vlm-video-analysis-title"
+                hidden
+              >
+                <header className="performance-subsection__header">
+                  <h3 id="vlm-video-analysis-title">
+                    VLM and Video Model Analysis
+                  </h3>
+                  <p>
+                    Random-instruction diagnostics reveal complementary
+                    language and visual-dynamics priors.
+                  </p>
                 </header>
-                <p>
+                <p className="performance-subsection__body">
                   Under random instructions, π0.5 loses 0.16 success on
                   InsertFlower and 0.30 on SelectFruit, showing clear language
                   sensitivity. Mimic-Video changes by +0.10 and +0.02,
@@ -3247,19 +4330,12 @@ export default function Home() {
                     <p>stronger task-level visual prior</p>
                   </div>
                 </div>
-                <small>
+                <p className="performance-subsection__note">
                   This diagnostic explains complementary priors; it is not a
                   standalone ranking of overall policy quality.
-                </small>
-              </article>
+                </p>
+              </section>
             </div>
-            <p className="results-note reveal">
-              Dynin-Robotics reports 98.1 average on LIBERO and 73.0 zero-shot
-              average on LIBERO-Plus. ABot-M0 remains higher on both selected
-              comparison tables (98.6 and 80.5), while Dynin-Robotics is higher
-              than the listed unified baselines MMaDA-VLA on LIBERO and UniVLA
-              on LIBERO-Plus.
-            </p>
           </div>
         </section>
 
@@ -3315,13 +4391,13 @@ export default function Home() {
                 aria-label="Contributor role notes"
               >
                 <p>
-                  <sup>§</sup>: Project lead.
+                  <sup>§</sup> Project lead
                 </p>
                 <p>
-                  <sup>¶</sup>: Core contributors
+                  <sup>¶</sup> Core contributors
                 </p>
                 <p>
-                  <sup>†</sup>: Supervision and Corresponding author
+                  <sup>†</sup> Supervision and Corresponding author
                 </p>
               </div>
             </div>
