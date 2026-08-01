@@ -41,7 +41,6 @@ const demonstrationVideoPaths = [
   "assets/benchmark/realworld/real_pnp2.mp4",
   "assets/benchmark/realworld/real_pnp3.mp4",
   "assets/benchmark/realworld/real_pnp4.mp4",
-  "assets/benchmark/realworld/real_table.mp4",
   "assets/benchmark/realworld/real_table1.mp4",
   "assets/benchmark/realworld/real_table2.mp4",
   "assets/benchmark/realworld/real_table3.mp4",
@@ -55,6 +54,15 @@ test("exports the complete Dynin-Robotics landing page", async () => {
     "utf8",
   );
   const css = await readFile(new URL("app/globals.css", projectRoot), "utf8");
+  const overviewSectionStart = pageSource.indexOf('id="overview"');
+  const overviewSectionEnd = pageSource.indexOf(
+    'section className="section section--motivation"',
+    overviewSectionStart,
+  );
+  const overviewSectionSource = pageSource.slice(
+    overviewSectionStart,
+    overviewSectionEnd,
+  );
 
   assert.match(html, /Dynin-Robotics/);
   assert.match(html, /unified objective training/);
@@ -63,11 +71,22 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.match(html, /overview-original-ui/);
   assert.match(html, /paradigm-legend-inline/);
   assert.match(html, /Figure token legend/);
+  assert.match(html, /name="twitter:card" content="summary"/);
+  assert.doesNotMatch(html, /property="og:image(?::[^"]+)?"/);
+  assert.doesNotMatch(html, /name="twitter:image(?::[^"]+)?"/);
   assert.doesNotMatch(pageSource, /paradigm-legend-popover/);
   assert.doesNotMatch(pageSource, /ⓘ/);
   assert.match(
     css,
     /\.paradigm-legend-inline \{[\s\S]*?border: 0;[\s\S]*?background: transparent;[\s\S]*?outline: 0;/,
+  );
+  assert.match(
+    css,
+    /\.hero \{[\s\S]*?padding: clamp\(130px, 14vh, 156px\) 0 24px;/,
+  );
+  assert.match(
+    css,
+    /\.section\.section--project-overview \{[\s\S]*?padding-top: 28px;/,
   );
   assert.match(html, /aria-label="Robot capability"/);
   assert.match(html, /id="capabilities"/);
@@ -184,7 +203,12 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.ok(
     worldExampleHtml.indexOf("Action") <
-      worldExampleHtml.indexOf("Generated next state"),
+      worldExampleHtml.indexOf("Next state"),
+  );
+  assert.match(worldExampleHtml, /<figcaption>Next state<\/figcaption>/);
+  assert.doesNotMatch(
+    worldExampleHtml,
+    /<figcaption>Generated next state<\/figcaption>/,
   );
   assert.equal(
     (capabilitiesSection.match(/class="capability-goal-example"/g) ?? [])
@@ -207,7 +231,12 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.ok(
     goalExampleHtml.indexOf("Instruction") <
-      goalExampleHtml.indexOf("Generated goal state"),
+      goalExampleHtml.indexOf("Goal state"),
+  );
+  assert.match(goalExampleHtml, /<figcaption>Goal state<\/figcaption>/);
+  assert.doesNotMatch(
+    goalExampleHtml,
+    /<figcaption>Generated goal state<\/figcaption>/,
   );
   assert.equal(
     (capabilitiesSection.match(/class="capability-task-example"/g) ?? [])
@@ -231,7 +260,12 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.ok(
     taskExampleHtml.indexOf("Task video frames") <
-      taskExampleHtml.indexOf("Generated task description"),
+      taskExampleHtml.indexOf("Task description"),
+  );
+  assert.match(taskExampleHtml, /<strong>Task description<\/strong>/);
+  assert.doesNotMatch(
+    taskExampleHtml,
+    /<strong>Generated task description<\/strong>/,
   );
   assert.equal(
     (capabilitiesSection.match(/class="is-vision"/g) ?? []).length,
@@ -259,7 +293,7 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     css,
-    /\.capability-summary-card \{[\s\S]*?padding: clamp\(26px, 3\.2vw, 40px\);[\s\S]*?border-radius: 22px;[\s\S]*?background: var\(--surface-card\);/,
+    /\.capability-summary-card \{[\s\S]*?grid-template-rows: auto auto auto auto;[\s\S]*?align-content: start;[\s\S]*?padding: clamp\(26px, 3\.2vw, 40px\);[\s\S]*?border-radius: 22px;[\s\S]*?background: var\(--surface-card\);/,
   );
   assert.match(
     css,
@@ -267,11 +301,11 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     css,
-    /\.capability-summary-card p \{[\s\S]*?margin-top: 9px;[\s\S]*?font-size: 14px;[\s\S]*?line-height: 1\.6;/,
+    /\.capability-summary-card p \{[\s\S]*?min-height: 44\.8px;[\s\S]*?margin-top: 9px;[\s\S]*?font-size: 14px;[\s\S]*?line-height: 1\.6;/,
   );
   assert.match(
     css,
-    /\.capability-summary-card__io \{[\s\S]*?align-self: end;[\s\S]*?border-top: 1px solid var\(--line\);/,
+    /\.capability-summary-card__io \{[\s\S]*?align-self: start;[\s\S]*?border-top: 1px solid var\(--line\);/,
   );
   assert.match(
     css,
@@ -315,7 +349,23 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     css,
-    /@media \(min-width: 821px\) and \(max-width: 1160px\) \{[\s\S]*?\.capability-policy-example__action > div \{[\s\S]*?gap: 3px;[\s\S]*?padding: 6px;[\s\S]*?\.capability-policy-example__action span \{[\s\S]*?padding: 3px 2px;/,
+    /\.capability-policy-example__action > div \{[\s\S]*?gap: 5px;[\s\S]*?padding: 8px;[\s\S]*?border-radius: 8px;/,
+  );
+  assert.match(
+    css,
+    /\.capability-policy-example__action span \{[\s\S]*?padding: 6px 2px;[\s\S]*?font-size: 8px;/,
+  );
+  assert.match(
+    css,
+    /\.capability-world-example__action span \{[\s\S]*?padding: 6px 2px;[\s\S]*?font-size: 8px;/,
+  );
+  assert.doesNotMatch(
+    css,
+    /@media \(min-width: 821px\) and \(max-width: 1160px\) \{[\s\S]*?\.capability-policy-example__action span/,
+  );
+  assert.match(
+    css,
+    /@media \(max-width: 820px\) \{[\s\S]*?\.capability-summary-card p \{[\s\S]*?min-height: 0;/,
   );
   assert.match(
     css,
@@ -869,6 +919,65 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   const performanceStart = html.indexOf('id="performance"');
   const performanceEnd = html.indexOf('id="contributors"', performanceStart);
   const performanceSection = html.slice(performanceStart, performanceEnd);
+  const contributorsStart = performanceEnd;
+  const contributorsEnd = html.indexOf("</main>", contributorsStart);
+  const contributorsSection = html.slice(contributorsStart, contributorsEnd);
+  const expectedContributors = [
+    ["Hoeun Lee", "Project Lead"],
+    ["Jaeik Kim", "-"],
+    ["Jinhyeok Kim", "-"],
+    ["Hyeonggeun Kim", "-"],
+    ["Jusang Oh", "-"],
+    ["Geon Choi", "-"],
+    ["Jaeyoung Do", "Supervisor"],
+  ];
+
+  assert.equal(
+    (contributorsSection.match(/<a\b/g) ?? []).length,
+    expectedContributors.length,
+  );
+  for (const [name, role] of expectedContributors) {
+    const encodedName = encodeURIComponent(name);
+    const profileQuery = new URLSearchParams({ s: name }).toString();
+    const profileUrl =
+      `https://aidas.snu.ac.kr/people/?${profileQuery}` +
+      `#:~:text=${encodedName}`;
+    const hrefAttribute = `href="${profileUrl}"`;
+    const hrefIndex = contributorsSection.indexOf(hrefAttribute);
+
+    assert.notEqual(hrefIndex, -1, `${name} should link to the AIDAS profile`);
+
+    const linkStart = contributorsSection.lastIndexOf("<a", hrefIndex);
+    const linkEnd = contributorsSection.indexOf("</a>", hrefIndex);
+    const contributorLink = contributorsSection.slice(linkStart, linkEnd + 4);
+
+    assert.match(contributorLink, /class="contributors-section__link"/);
+    assert.match(contributorLink, /target="_blank"/);
+    assert.match(contributorLink, /rel="noopener noreferrer"/);
+    assert.ok(contributorLink.includes(name));
+    assert.ok(contributorLink.includes(`<span>${role}</span>`));
+  }
+
+  const contributorLinkStyle =
+    css.match(/\.contributors-section__link\s*\{([^}]*)\}/)?.[1] ?? "";
+  const contributorFocusStyle =
+    css.match(/\.contributors-section__link:focus-visible\s*\{([^}]*)\}/)?.[1] ??
+    "";
+
+  assert.match(contributorLinkStyle, /color:\s*inherit;/);
+  assert.match(contributorLinkStyle, /text-decoration:\s*none;/);
+  assert.match(contributorLinkStyle, /transform-origin:\s*left center;/);
+  assert.match(contributorLinkStyle, /transition:\s*transform 180ms ease-out;/);
+  assert.match(
+    css,
+    /\.contributors-section__link:hover\s*\{\s*transform:\s*scale\(1\.02\);/,
+  );
+  assert.match(
+    css,
+    /@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.contributors-section__link\s*\{\s*transition:\s*none;/,
+  );
+  assert.match(contributorFocusStyle, /outline:/);
+  assert.match(contributorFocusStyle, /outline-offset:/);
   const accelerationBarsStart = performanceSection.indexOf(
     '<figure class="acceleration-bars"',
   );
@@ -882,11 +991,15 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     performanceSection,
-    /Action Throughput Comparison/,
+    /<h3 id="acceleration-bars-title">Acceleration<\/h3>/,
   );
   assert.match(
     performanceSection,
-    /For Dynin-Robotics, BL denotes the number of tokens denoised at each step\./,
+    /Block-wise(?:<!-- -->)?\s*<code class="acceleration-mono">dInfer<\/code>/,
+  );
+  assert.match(
+    performanceSection,
+    /Below, we compare action tokens per second \(TPS\)\./,
   );
   assert.doesNotMatch(
     performanceSection,
@@ -1059,19 +1172,15 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.ok(
     performanceSection.indexOf("Ablation Study") <
-      performanceSection.indexOf(
-        "Action Throughput Comparison",
-      ),
+      performanceSection.indexOf("Acceleration"),
   );
   assert.ok(
-    performanceSection.indexOf(
-      "Action Throughput Comparison",
-    ) <
+    performanceSection.indexOf("Acceleration") <
       performanceSection.indexOf("VLM and Video Model Analysis"),
   );
-  assert.doesNotMatch(
+  assert.match(
     performanceSection,
-    /aria-labelledby="acceleration-title"|id="acceleration-title"|<h3>Acceleration<\/h3>/,
+    /aria-labelledby="acceleration-bars-title"/,
   );
   assert.match(
     performanceSection,
@@ -1126,8 +1235,19 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.match(performanceSection, /9\.221/);
   assert.match(performanceSection, /91\.236/);
   assert.match(performanceSection, /268\.834/);
-  assert.match(performanceSection, /Dynin-Robotics \(BL=7\)/);
-  assert.match(performanceSection, /Dynin-Robotics \(BL=35\)/);
+  assert.match(
+    performanceSection,
+    /Dynin-Robotics \(<code class="acceleration-mono">Base<\/code>\)/,
+  );
+  assert.match(
+    performanceSection,
+    /Dynin-Robotics \(<code class="acceleration-mono">dInfer-BL7<\/code>\)/,
+  );
+  assert.match(
+    performanceSection,
+    /Dynin-Robotics \(<code class="acceleration-mono">dInfer-BL35<\/code>\)/,
+  );
+  assert.match(accelerationBarsFigure, /<span>TPS ↑<\/span>/);
   assert.match(performanceSection, /Vision-Language Model/);
   assert.match(performanceSection, /Mask Diffusion Model/);
   assert.doesNotMatch(
@@ -1171,6 +1291,10 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.match(
     css,
     /\.acceleration-bars-section \.performance-subsection__header p \{[\s\S]*?width: 100%;[\s\S]*?max-width: none;/,
+  );
+  assert.match(
+    css,
+    /\.acceleration-mono \{[\s\S]*?font-family: var\(--mono\);/,
   );
   assert.match(
     css,
@@ -1253,10 +1377,7 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.doesNotMatch(css, /\.ablation-list\b|\.inference-ablation-table\b/);
   assert.match(html, /\/Dynin-Robotics-Project-Page\/_next\//);
   assert.match(html, /\/Dynin-Robotics-Project-Page\/paper\.pdf/);
-  assert.match(
-    html,
-    /https:\/\/leehe228\.github\.io\/Dynin-Robotics-Project-Page\/og\.png/,
-  );
+  assert.doesNotMatch(html, /Dynin-Robotics-Project-Page\/og\.png/);
   assert.doesNotMatch(html, /kim-jake|dynin-robotics-ui/);
   assert.doesNotMatch(
     html,
@@ -1277,7 +1398,7 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     pageSource,
-    /instruction: \[4, 9, 1, 7, 0, 6, 3, 8, 2, 5\]/,
+    /instruction: \[\.\.\.overviewTaskInstructionRevealOrder\]/,
   );
   assert.match(html, /Put the glue stick inside the open drawer/);
   assert.match(pageSource, /Take the purple plush toy out of the bowl/);
@@ -1285,8 +1406,14 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.match(html, /0\.01, 0\.13, 0\.63, 0\.40, -0\.25, -0\.05/);
   assert.match(pageSource, /0\.01, 0\.13, 0\.63,/);
   assert.match(pageSource, /0\.40, -0\.25, -0\.05/);
-  assert.match(html, /-0\.80, -0\.55, 0\.18,/);
-  assert.match(html, /0\.04, -0\.15, 0\.41/);
+  assert.match(
+    html,
+    /Action prediction step 0: MASK, MASK, MASK, MASK, MASK, MASK, MASK, MASK, MASK, MASK/,
+  );
+  assert.equal(
+    (html.match(/objective-action-value is-mask/g) ?? []).length,
+    10,
+  );
   assert.match(pageSource, /Predicted world state/);
   assert.match(pageSource, /Generated goal state/);
   assert.match(
@@ -1342,6 +1469,11 @@ test("exports the complete Dynin-Robotics landing page", async () => {
     pageSource,
     /key=\{`\$\{objective\.key\}-\$\{playbackId\}`\}/,
   );
+  assert.ok(
+    overviewSectionSource.indexOf("<OriginalUnifiedOverview") <
+      overviewSectionSource.indexOf('className="project-overview__intro reveal"'),
+    "Overview figure should render before the Overview heading and body",
+  );
   assert.match(
     pageSource,
     /1000, 850, 1050, 1050, 320, 200, 200, 200, 200, 200, 1800/,
@@ -1349,6 +1481,26 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.match(pageSource, /objective-condition-value-stack/);
   assert.match(pageSource, /objective-condition-value \$\{valueClass\} is-base/);
   assert.match(pageSource, /objective-condition-value \$\{valueClass\} is-flight/);
+  assert.match(
+    pageSource,
+    /lines: \[" 0\.01", " 0\.13", " 0\.63", " 0\.40", "-0\.25", "-0\.05"\]/,
+  );
+  assert.match(
+    pageSource,
+    /const isWorldActionGrid =\s+objective\.key === "world" &&\s+item\.key === "action" &&\s+value\.kind === "text";/,
+  );
+  assert.match(
+    pageSource,
+    /const hasDashedValueOutline =\s+\(objective\.key === "policy" &&\s+\(item\.key === "goal" \|\| item\.key === "sensor"\)\) \|\|\s+\(objective\.key === "world" &&\s+\(item\.key === "instruction" \|\| item\.key === "action"\)\);/,
+  );
+  assert.match(
+    css,
+    /\.objective-condition-value\.is-action-grid \{\s+display: grid;\s+grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);\s+grid-template-rows: repeat\(2, minmax\(0, 1fr\)\);\s+column-gap: 2px;/,
+  );
+  assert.match(
+    css,
+    /\.objective-condition-value\.is-dashed-outline \{\s+border-style: dashed;/,
+  );
   assert.match(pageSource, /hasNarrativeAnimation/);
 });
 
@@ -1493,7 +1645,7 @@ test("renders world, goal-state, and task-understanding evidence", async () => {
   const realWorldDemonstrationsHtml = demonstrationsHtml.slice(
     realWorldDemonstrationStart,
   );
-  assert.equal((demonstrationsHtml.match(/<video\b/g) ?? []).length, 40);
+  assert.equal((demonstrationsHtml.match(/<video\b/g) ?? []).length, 39);
   assert.equal((liberoDemonstrationsHtml.match(/<video\b/g) ?? []).length, 16);
   assert.equal(
     (liberoPlusDemonstrationsHtml.match(/<video\b/g) ?? []).length,
@@ -1501,7 +1653,7 @@ test("renders world, goal-state, and task-understanding evidence", async () => {
   );
   assert.equal(
     (realWorldDemonstrationsHtml.match(/<video\b/g) ?? []).length,
-    10,
+    9,
   );
   assert.match(
     realWorldDemonstrationsHtml,
@@ -1592,7 +1744,7 @@ test("renders world, goal-state, and task-understanding evidence", async () => {
   );
   assert.match(
     css,
-    /\.demonstration-real-world-grid \{[\s\S]*?grid-template-columns: repeat\(10, minmax\(0, 1fr\)\);[\s\S]*?min-width: 1080px;/,
+    /\.demonstration-real-world-grid \{[\s\S]*?grid-template-columns: repeat\(9, minmax\(0, 1fr\)\);[\s\S]*?min-width: 1080px;/,
   );
   assert.match(
     css,
@@ -1632,6 +1784,73 @@ test("renders world, goal-state, and task-understanding evidence", async () => {
   const worldHtml = html.slice(worldStart, goalStart);
   const goalHtml = html.slice(goalStart, taskStart);
   const taskHtml = html.slice(taskStart, performanceStart);
+  assert.equal(
+    (html.match(/class="qualitative-sample-navigation"/g) ?? []).length,
+    3,
+  );
+  assert.equal(
+    (
+      html.match(
+        /class="qualitative-sample-navigation__chevron is-(?:previous|next)"/g,
+      ) ?? []
+    ).length,
+    6,
+  );
+  for (const label of [
+    "World Modeling",
+    "Goal-State Prediction",
+    "Task Understanding",
+  ]) {
+    assert.match(
+      html,
+      new RegExp(`aria-label="Previous ${label} sample"`),
+    );
+    assert.match(html, new RegExp(`aria-label="Next ${label} sample"`));
+  }
+  assert.equal(
+    (worldHtml.match(/class="qualitative-sample-navigation"/g) ?? []).length,
+    1,
+  );
+  assert.equal(
+    (goalHtml.match(/class="qualitative-sample-navigation"/g) ?? []).length,
+    1,
+  );
+  assert.equal(
+    (taskHtml.match(/class="qualitative-sample-navigation"/g) ?? []).length,
+    1,
+  );
+  assert.match(
+    pageSource,
+    /const moveWorldSample = useCallback\([\s\S]*?setWorldSamplesAreTransitioning\(false\);[\s\S]*?setWorldOutputFramesVisible\(0\);[\s\S]*?worldQualitativeRows\.length/,
+  );
+  assert.match(
+    pageSource,
+    /const moveGoalSamplePage = useCallback\([\s\S]*?setGoalSamplesAreTransitioning\(false\);[\s\S]*?goalSamplePageCount/,
+  );
+  assert.match(
+    pageSource,
+    /const moveTaskSamplePage = useCallback\([\s\S]*?setTaskSamplesAreTransitioning\(false\);[\s\S]*?setTaskVideoFrameIndex\(0\);[\s\S]*?taskSamplePageCount/,
+  );
+  assert.match(
+    css,
+    /\.qualitative-sample-navigation \{[\s\S]*?justify-content: flex-end;[\s\S]*?margin-top: 12px;/,
+  );
+  assert.match(
+    css,
+    /\.qualitative-sample-navigation button \{[\s\S]*?width: 28px;[\s\S]*?height: 28px;[\s\S]*?color: var\(--quiet\);[\s\S]*?cursor: pointer;/,
+  );
+  assert.match(
+    css,
+    /\.qualitative-sample-navigation__chevron::before,[\s\S]*?\.qualitative-sample-navigation__chevron::after \{[\s\S]*?width: 9px;[\s\S]*?height: 1px;[\s\S]*?background: currentColor;/,
+  );
+  assert.match(
+    css,
+    /\.qualitative-sample-navigation__chevron\.is-previous::before \{\s+transform: rotate\(-45deg\);[\s\S]*?\.qualitative-sample-navigation__chevron\.is-previous::after \{\s+transform: rotate\(45deg\);/,
+  );
+  assert.match(
+    css,
+    /\.qualitative-sample-navigation__chevron\.is-next::before \{\s+transform: rotate\(45deg\);[\s\S]*?\.qualitative-sample-navigation__chevron\.is-next::after \{\s+transform: rotate\(-45deg\);/,
+  );
   assert.doesNotMatch(worldHtml, /Example 01|5-frame context|5-frame generation/);
   assert.equal((worldHtml.match(/<img\b/g) ?? []).length, 20);
   assert.match(
@@ -1654,7 +1873,7 @@ test("renders world, goal-state, and task-understanding evidence", async () => {
   }
   assert.doesNotMatch(pageSource, /key: "row_01_droid_sample_0003"/);
   assert.match(pageSource, /const WORLD_OUTPUT_FRAME_INTERVAL = 100;/);
-  assert.match(pageSource, /const WORLD_OUTPUT_FINAL_HOLD_DURATION = 2500;/);
+  assert.match(pageSource, /const WORLD_OUTPUT_FINAL_HOLD_DURATION = 4500;/);
   assert.match(pageSource, /const WORLD_SAMPLE_FADE_DURATION = 280;/);
   assert.equal(
     (
@@ -1773,7 +1992,7 @@ test("renders world, goal-state, and task-understanding evidence", async () => {
     assert.match(pageSource, new RegExp(sample));
   }
   assert.match(pageSource, /const GOAL_SAMPLES_PER_PAGE = 2;/);
-  assert.match(pageSource, /const GOAL_SAMPLE_INTERVAL = 3000;/);
+  assert.match(pageSource, /const GOAL_SAMPLE_INTERVAL = 5000;/);
   assert.match(pageSource, /const GOAL_SAMPLE_FADE_DURATION = 280;/);
   assert.match(
     pageSource,
@@ -1926,7 +2145,7 @@ test("renders world, goal-state, and task-understanding evidence", async () => {
     assert.match(pageSource, new RegExp(sample));
   }
   assert.match(pageSource, /const TASK_SAMPLES_PER_PAGE = 2;/);
-  assert.match(pageSource, /const TASK_SAMPLE_INTERVAL = 3000;/);
+  assert.match(pageSource, /const TASK_SAMPLE_INTERVAL = 5000;/);
   assert.match(pageSource, /const TASK_SAMPLE_FADE_DURATION = 280;/);
   assert.match(pageSource, /const TASK_VIDEO_FRAME_COUNT = 30;/);
   assert.match(pageSource, /const TASK_VIDEO_FRAME_INTERVAL = 100;/);
@@ -2064,7 +2283,7 @@ test("ships a system-aware three-way theme toggle", async () => {
   );
   assert.match(
     css,
-    /has-narrative-animation\.phase-3[\s\S]*?output-flow-comet[\s\S]*?animation: legacy-output-flow[\s\S]*?1 both;/,
+    /has-narrative-animation\.phase-3[\s\S]*?output-flow-comet[\s\S]*?animation: legacy-output-flow[\s\S]*?1\s+both;/,
   );
   assert.match(css, /--overview-idle-route: #c5cdd5;/);
   assert.match(
@@ -2089,19 +2308,128 @@ test("ships a system-aware three-way theme toggle", async () => {
   );
   assert.match(
     pageSource,
-    /className=\{`objective-output-value is-action-vector \$\{[\s\S]*?isActive \? "is-visible" : ""[\s\S]*?\}`\}[\s\S]*?aria-hidden=\{!isActive\}/,
+    /className=\{`objective-output-value is-action-vector \$\{[\s\S]*?isActive \? "is-visible" : ""[\s\S]*?\}`\}[\s\S]*?role="img"[\s\S]*?aria-hidden=\{!isActive\}/,
+  );
+  assert.match(
+    pageSource,
+    /const overviewPolicyActionValues = \[\s+"-0\.80",\s+"-0\.55",\s+" 0\.18",\s+"-0\.38",\s+" 0\.87",\s+" 0\.04",\s+"-0\.15",\s+" 0\.41",\s+" 0\.09",\s+" 1\.00",\s+\] as const;/,
+  );
+  assert.match(
+    pageSource,
+    /const overviewPolicyActionColumnCount = 5;/,
+  );
+  assert.match(
+    pageSource,
+    /const overviewPolicyActionRevealCounts = \[0, 2, 4, 6, 8, 10\] as const;/,
+  );
+  assert.match(
+    pageSource,
+    /const overviewTaskInstructionWords = \[\s+"Push",\s+"the",\s+"faucet",\s+"of",\s+"the",\s+"sink",\s+"slightly",\s+"to",\s+"the",\s+"left",\s+\] as const;/,
+  );
+  assert.match(
+    pageSource,
+    /const overviewTaskInstructionRevealOrder = \[\s+4, 9, 1, 7, 0, 6, 3, 8, 2, 5,\s+\] as const;/,
+  );
+  assert.match(
+    pageSource,
+    /const overviewTaskInstructionRevealCounts = \[0, 2, 4, 6, 8, 10\] as const;/,
+  );
+  assert.match(
+    pageSource,
+    /const policyActionStep = Math\.max\([\s\S]*?activeStage - 4,[\s\S]*?overviewPolicyActionRevealCounts\.length - 1,[\s\S]*?\);/,
+  );
+  assert.match(
+    pageSource,
+    /const policyActionRevealColumns = policyActionRevealCount \/ 2;/,
+  );
+  assert.equal(
+    (
+      pageSource.match(
+        /index % overviewPolicyActionColumnCount <\s+policyActionRevealColumns/g,
+      ) ?? []
+    ).length,
+    2,
+  );
+  assert.match(
+    pageSource,
+    /data-prediction-step=\{policyActionStep\}[\s\S]*?overviewPolicyActionValues\.map\(\(value, index\) => \{/,
   );
   assert.match(
     css,
-    /\.generation-stage\.objective-policy\.has-narrative-animation[\s\S]*?\.objective-output-value\.is-action-vector\.is-visible \{\s+animation: overview-policy-result-appear 340ms ease 610ms both;/,
+    /\.objective-output-value\.is-action-vector \{\s+display: grid;[\s\S]*?width: 220px;[\s\S]*?grid-template-columns: repeat\(5, minmax\(0, 1fr\)\);[\s\S]*?gap: 3px 6px;/,
   );
   assert.match(
     css,
-    /\.generation-stage\.has-narrative-animation\.phase-10[\s\S]*?\.objective-output-value:not\(\.is-action-vector\) \{/,
+    /\.objective-action-value \{[\s\S]*?white-space: pre;[\s\S]*?animation: overview-policy-action-value-swap 140ms ease both;/,
   );
   assert.match(
     css,
-    /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.objective-output-value\.is-action-vector\.is-visible \{\s+animation-delay: 0ms !important;/,
+    /\.objective-condition-value\.is-action > span \{\s+white-space: pre;/,
+  );
+  assert.match(
+    pageSource,
+    /const isOutputSettled =[\s\S]*?activeStage >= outputCommitCounts\.length - 1;/,
+  );
+  assert.equal(
+    (pageSource.match(/className="objective-output-value is-image"/g) ?? [])
+      .length,
+    2,
+  );
+  assert.equal(
+    (pageSource.match(/aria-hidden=\{!isOutputSettled\}/g) ?? []).length,
+    2,
+  );
+  assert.match(
+    pageSource,
+    /className=\{`objective-output-value is-instruction-text \$\{[\s\S]*?isActive \? "is-visible" : ""[\s\S]*?\}`\}[\s\S]*?role="img"[\s\S]*?aria-hidden=\{!isActive\}[\s\S]*?data-prediction-step=\{taskInstructionStep\}/,
+  );
+  assert.equal(
+    (
+      pageSource.match(
+        /outputOrder\.indexOf\(index\) <\s+taskInstructionRevealCount/g,
+      ) ?? []
+    ).length,
+    2,
+  );
+  assert.match(
+    css,
+    /\.objective-output-value\.is-instruction-text \{\s+width: 210px;/,
+  );
+  assert.match(
+    css,
+    /\.objective-instruction-flow \{\s+display: block;[\s\S]*?text-align: center;/,
+  );
+  assert.match(
+    css,
+    /\.objective-instruction-word \{\s+display: inline;[\s\S]*?animation: overview-policy-action-value-swap 140ms ease both;/,
+  );
+  assert.match(
+    pageSource,
+    /className="objective-instruction-flow"[\s\S]*?index < overviewTaskInstructionWords\.length - 1[\s\S]*?\? " "/,
+  );
+  assert.equal(
+    (pageSource.match(/aria-hidden=\{!isActive\}/g) ?? []).length,
+    2,
+  );
+  assert.match(
+    css,
+    /\.generation-stage\.has-narrative-animation[\s\S]*?\.objective-output-value\.is-visible \{\s+animation: overview-policy-result-appear 340ms ease 610ms both;/,
+  );
+  assert.match(
+    css,
+    /\.generation-stage\.has-narrative-animation\.phase-10\s+\.objective-output-value\.is-image \{\s+animation: overview-policy-result-appear 420ms cubic-bezier\(0\.22, 1, 0\.36, 1\)\s+both;/,
+  );
+  assert.doesNotMatch(
+    css,
+    /phase-10\s+\.objective-output-value\.is-instruction-text/,
+  );
+  assert.doesNotMatch(
+    css,
+    /phase-10\s+\.objective-output-value:not\(\.is-action-vector\)/,
+  );
+  assert.match(
+    css,
+    /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.objective-output-value\.is-visible \{\s+animation-delay: 0ms !important;/,
   );
   assert.match(
     css,

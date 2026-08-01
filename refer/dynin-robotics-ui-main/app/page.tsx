@@ -18,13 +18,13 @@ const INFERENCE_STAGE_DURATION = 720;
 const INFERENCE_FINAL_HOLD_DURATION = 1500;
 const WORLD_OUTPUT_FRAME_COUNT = 5;
 const WORLD_OUTPUT_FRAME_INTERVAL = 100;
-const WORLD_OUTPUT_FINAL_HOLD_DURATION = 2500;
+const WORLD_OUTPUT_FINAL_HOLD_DURATION = 4500;
 const WORLD_SAMPLE_FADE_DURATION = 280;
 const GOAL_SAMPLES_PER_PAGE = 2;
-const GOAL_SAMPLE_INTERVAL = 3000;
+const GOAL_SAMPLE_INTERVAL = 5000;
 const GOAL_SAMPLE_FADE_DURATION = 280;
 const TASK_SAMPLES_PER_PAGE = 2;
-const TASK_SAMPLE_INTERVAL = 3000;
+const TASK_SAMPLE_INTERVAL = 5000;
 const TASK_SAMPLE_FADE_DURATION = 280;
 const TASK_VIDEO_FRAME_COUNT = 30;
 const TASK_VIDEO_FRAME_INTERVAL = 100;
@@ -174,7 +174,7 @@ const overviewInputValues: Partial<
     },
     action: {
       kind: "text",
-      lines: ["0.01, 0.13, 0.63,", "0.40, -0.25, -0.05"],
+      lines: [" 0.01", " 0.13", " 0.63", " 0.40", "-0.25", "-0.05"],
       tone: "action",
     },
   },
@@ -213,6 +213,37 @@ const objectiveOrder: ObjectiveKey[] = [
 ];
 
 const overviewNarrativeObjectives: ObjectiveKey[] = [...objectiveOrder];
+
+const overviewPolicyActionValues = [
+  "-0.80",
+  "-0.55",
+  " 0.18",
+  "-0.38",
+  " 0.87",
+  " 0.04",
+  "-0.15",
+  " 0.41",
+  " 0.09",
+  " 1.00",
+] as const;
+const overviewPolicyActionColumnCount = 5;
+const overviewPolicyActionRevealCounts = [0, 2, 4, 6, 8, 10] as const;
+const overviewTaskInstructionWords = [
+  "Push",
+  "the",
+  "faucet",
+  "of",
+  "the",
+  "sink",
+  "slightly",
+  "to",
+  "the",
+  "left",
+] as const;
+const overviewTaskInstructionRevealOrder = [
+  4, 9, 1, 7, 0, 6, 3, 8, 2, 5,
+] as const;
+const overviewTaskInstructionRevealCounts = [0, 2, 4, 6, 8, 10] as const;
 
 const capabilitySummaryCards = [
   {
@@ -689,15 +720,15 @@ const inferenceAblationResults = [
 
 const accelerationResults = [
   {
-    label: "Dynin-Robotics",
+    variant: "Base",
     effectiveTps: "9.221",
   },
   {
-    label: "Dynin-Robotics (BL=7)",
+    variant: "dInfer-BL7",
     effectiveTps: "91.236",
   },
   {
-    label: "Dynin-Robotics (BL=35)",
+    variant: "dInfer-BL35",
     effectiveTps: "268.834",
   },
 ] as const;
@@ -2293,6 +2324,45 @@ function FlowArrow() {
   );
 }
 
+function QualitativeSampleNavigation({
+  label,
+  onPrevious,
+  onNext,
+}: {
+  label: string;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <div
+      aria-label={`${label} sample navigation`}
+      className="qualitative-sample-navigation"
+      role="group"
+    >
+      <button
+        aria-label={`Previous ${label} sample`}
+        onClick={onPrevious}
+        type="button"
+      >
+        <span
+          aria-hidden="true"
+          className="qualitative-sample-navigation__chevron is-previous"
+        />
+      </button>
+      <button
+        aria-label={`Next ${label} sample`}
+        onClick={onNext}
+        type="button"
+      >
+        <span
+          aria-hidden="true"
+          className="qualitative-sample-navigation__chevron is-next"
+        />
+      </button>
+    </div>
+  );
+}
+
 function TaskUnderstandingResults() {
   const [taskPageIndex, setTaskPageIndex] = useState(0);
   const [taskSamplesAreTransitioning, setTaskSamplesAreTransitioning] =
@@ -2382,6 +2452,15 @@ function TaskUnderstandingResults() {
     };
   }, [taskPageIndex, taskVideoFramesAreReady]);
 
+  const moveTaskSamplePage = useCallback((offset: -1 | 1) => {
+    setTaskSamplesAreTransitioning(false);
+    setTaskVideoFrameIndex(0);
+    setTaskPageIndex(
+      (current) =>
+        (current + offset + taskSamplePageCount) % taskSamplePageCount,
+    );
+  }, []);
+
   const nextTaskPageIndex = (taskPageIndex + 1) % taskSamplePageCount;
   const visibleTransitionIsActive =
     taskSamplesAreTransitioning && !taskVideoMotionIsReduced;
@@ -2455,6 +2534,11 @@ function TaskUnderstandingResults() {
           </div>
         ))}
       </div>
+      <QualitativeSampleNavigation
+        label="Task Understanding"
+        onNext={() => moveTaskSamplePage(1)}
+        onPrevious={() => moveTaskSamplePage(-1)}
+      />
     </section>
   );
 }
@@ -2514,7 +2598,7 @@ function QualitativeResults() {
       window.clearTimeout(fadeTimer);
       window.clearTimeout(nextRowTimer);
     };
-  }, [worldOutputFramesVisible]);
+  }, [worldOutputFramesVisible, worldRowIndex]);
 
   useEffect(() => {
     const fadeTimer = window.setTimeout(() => {
@@ -2531,6 +2615,24 @@ function QualitativeResults() {
       window.clearTimeout(swapTimer);
     };
   }, [goalPageIndex]);
+
+  const moveWorldSample = useCallback((offset: -1 | 1) => {
+    setWorldSamplesAreTransitioning(false);
+    setWorldOutputFramesVisible(0);
+    setWorldRowIndex(
+      (current) =>
+        (current + offset + worldQualitativeRows.length) %
+        worldQualitativeRows.length,
+    );
+  }, []);
+
+  const moveGoalSamplePage = useCallback((offset: -1 | 1) => {
+    setGoalSamplesAreTransitioning(false);
+    setGoalPageIndex(
+      (current) =>
+        (current + offset + goalSamplePageCount) % goalSamplePageCount,
+    );
+  }, []);
 
   const nextWorldRowIndex =
     (worldRowIndex + 1) % worldQualitativeRows.length;
@@ -2615,6 +2717,11 @@ function QualitativeResults() {
             );
           })}
         </div>
+        <QualitativeSampleNavigation
+          label="World Modeling"
+          onNext={() => moveWorldSample(1)}
+          onPrevious={() => moveWorldSample(-1)}
+        />
       </section>
 
       <section className="qualitative-capability is-goal">
@@ -2692,6 +2799,11 @@ function QualitativeResults() {
             </div>
           ))}
         </div>
+        <QualitativeSampleNavigation
+          label="Goal-State Prediction"
+          onNext={() => moveGoalSamplePage(1)}
+          onPrevious={() => moveGoalSamplePage(-1)}
+        />
       </section>
 
       <TaskUnderstandingResults />
@@ -2807,7 +2919,6 @@ const realWorldDemonstrations = [
   "/assets/benchmark/realworld/real_pnp2.mp4",
   "/assets/benchmark/realworld/real_pnp3.mp4",
   "/assets/benchmark/realworld/real_pnp4.mp4",
-  "/assets/benchmark/realworld/real_table.mp4",
   "/assets/benchmark/realworld/real_table1.mp4",
   "/assets/benchmark/realworld/real_table2.mp4",
   "/assets/benchmark/realworld/real_table3.mp4",
@@ -3166,7 +3277,7 @@ function LegacyObjectiveFigure({
   const tokenCount = 10;
   const outputOrders: Record<ConditionKey, number[]> = {
     state: [7, 2, 9, 0, 5, 8, 1, 6, 3, 4],
-    instruction: [4, 9, 1, 7, 0, 6, 3, 8, 2, 5],
+    instruction: [...overviewTaskInstructionRevealOrder],
     action: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
     goal: [3, 9, 0, 7, 2, 8, 1, 6, 4, 5],
     sensor: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -3184,6 +3295,27 @@ function LegacyObjectiveFigure({
   ];
   const outputCommitCounts = narrativeOutputCommitCounts;
   const activeStage = Math.min(stage, outputCommitCounts.length - 1);
+  const isOutputSettled =
+    !hasNarrativeAnimation || activeStage >= outputCommitCounts.length - 1;
+  const policyActionStep = Math.max(
+    0,
+    Math.min(
+      activeStage - 4,
+      overviewPolicyActionRevealCounts.length - 1,
+    ),
+  );
+  const policyActionRevealCount =
+    overviewPolicyActionRevealCounts[policyActionStep];
+  const policyActionRevealColumns = policyActionRevealCount / 2;
+  const taskInstructionStep = Math.max(
+    0,
+    Math.min(
+      activeStage - 4,
+      overviewTaskInstructionRevealCounts.length - 1,
+    ),
+  );
+  const taskInstructionRevealCount =
+    overviewTaskInstructionRevealCounts[taskInstructionStep];
   const committed = outputCommitCounts[activeStage];
   const previousCommitted =
     activeStage === 0 ? 0 : outputCommitCounts[activeStage - 1];
@@ -3233,10 +3365,33 @@ function LegacyObjectiveFigure({
                   className={`objective-output-value is-action-vector ${
                     isActive ? "is-visible" : ""
                   }`}
+                  role="img"
                   aria-hidden={!isActive}
+                  aria-label={`Action prediction step ${policyActionStep}: ${overviewPolicyActionValues
+                    .map((value, index) =>
+                      index % overviewPolicyActionColumnCount <
+                      policyActionRevealColumns
+                        ? value
+                        : "MASK",
+                    )
+                    .join(", ")}`}
+                  data-prediction-step={policyActionStep}
                 >
-                  <span>-0.80, -0.55, 0.18,</span>
-                  <span>0.04, -0.15, 0.41</span>
+                  {overviewPolicyActionValues.map((value, index) => {
+                    const isPredicted =
+                      index % overviewPolicyActionColumnCount <
+                      policyActionRevealColumns;
+                    return (
+                      <span
+                        className={`objective-action-value ${
+                          isPredicted ? "is-predicted" : "is-mask"
+                        }`}
+                        key={`${index}-${isPredicted ? "predicted" : "mask"}`}
+                      >
+                        {isPredicted ? value : "MASK"}
+                      </span>
+                    );
+                  })}
                 </span>
               ) : null}
               {objective.key === "world" && port.key === "state" ? (
@@ -3244,7 +3399,7 @@ function LegacyObjectiveFigure({
                   className="objective-output-value is-image"
                   role="img"
                   aria-label="Predicted world state"
-                  aria-hidden={activeStage !== 10}
+                  aria-hidden={!isOutputSettled}
                   style={
                     {
                       "--objective-image": `url("${assetPath(
@@ -3259,7 +3414,7 @@ function LegacyObjectiveFigure({
                   className="objective-output-value is-image"
                   role="img"
                   aria-label="Generated goal state"
-                  aria-hidden={activeStage !== 10}
+                  aria-hidden={!isOutputSettled}
                   style={
                     {
                       "--objective-image": `url("${assetPath(
@@ -3272,11 +3427,40 @@ function LegacyObjectiveFigure({
               {objective.key === "instruction" &&
               port.key === "instruction" ? (
                 <span
-                  className="objective-output-value is-instruction-text"
-                  aria-hidden={activeStage !== 10}
+                  className={`objective-output-value is-instruction-text ${
+                    isActive ? "is-visible" : ""
+                  }`}
+                  role="img"
+                  aria-hidden={!isActive}
+                  aria-label={`Task instruction prediction step ${taskInstructionStep}: ${overviewTaskInstructionWords
+                    .map((word, index) =>
+                      outputOrder.indexOf(index) < taskInstructionRevealCount
+                        ? word
+                        : "MASK",
+                    )
+                    .join(", ")}`}
+                  data-prediction-step={taskInstructionStep}
                 >
-                  <span>Push the faucet of the sink</span>
-                  <span>slightly to the left</span>
+                  <span className="objective-instruction-flow">
+                    {overviewTaskInstructionWords.map((word, index) => {
+                      const isPredicted =
+                        outputOrder.indexOf(index) <
+                        taskInstructionRevealCount;
+                      return (
+                        <span
+                          className={`objective-instruction-word ${
+                            isPredicted ? "is-predicted" : "is-mask"
+                          }`}
+                          key={`${index}-${isPredicted ? "predicted" : "mask"}`}
+                        >
+                          {isPredicted ? word : "MASK"}
+                          {index < overviewTaskInstructionWords.length - 1
+                            ? " "
+                            : null}
+                        </span>
+                      );
+                    })}
+                  </span>
                 </span>
               ) : null}
               <span
@@ -3390,12 +3574,26 @@ function LegacyObjectiveFigure({
 
             const isVisualValue =
               value.kind === "image" || value.kind === "sequence";
+            const isWorldActionGrid =
+              objective.key === "world" &&
+              item.key === "action" &&
+              value.kind === "text";
+            const hasDashedValueOutline =
+              (objective.key === "policy" &&
+                (item.key === "goal" || item.key === "sensor")) ||
+              (objective.key === "world" &&
+                (item.key === "instruction" || item.key === "action"));
+            const dashedOutlineClass = hasDashedValueOutline
+              ? " is-dashed-outline"
+              : "";
             const valueClass =
               value.kind === "text"
-                ? `is-${value.tone}`
+                ? `is-${value.tone}${
+                    isWorldActionGrid ? " is-action-grid" : ""
+                  }${dashedOutlineClass}`
                 : `is-image ${
                     value.kind === "sequence" ? "is-sequence" : ""
-                  }`;
+                  }${dashedOutlineClass}`;
             const valueStyle =
               value.kind === "image"
                 ? ({
@@ -3674,7 +3872,7 @@ function PolicyCapabilityExample() {
 function WorldCapabilityExample() {
   return (
     <div
-      aria-label="World modeling example from current state, instruction, and action to generated next state"
+      aria-label="World modeling example from current state, instruction, and action to next state"
       className="capability-world-example"
     >
       <figure className="capability-world-example__image">
@@ -3702,9 +3900,9 @@ function WorldCapabilityExample() {
         <i />
       </span>
       <figure className="capability-world-example__image capability-world-example__output">
-        <figcaption>Generated next state</figcaption>
+        <figcaption>Next state</figcaption>
         <img
-          alt="Generated next state after the purple plush toy is lifted from the bowl"
+          alt="Next state after the purple plush toy is lifted from the bowl"
           decoding="async"
           loading="lazy"
           src={assetPath(worldCapabilityExample.generated)}
@@ -3717,7 +3915,7 @@ function WorldCapabilityExample() {
 function GoalStateCapabilityExample() {
   return (
     <div
-      aria-label="Goal-state prediction example from initial state and instruction to generated goal state"
+      aria-label="Goal-state prediction example from initial state and instruction to goal state"
       className="capability-goal-example"
     >
       <div className="capability-goal-example__inputs">
@@ -3739,9 +3937,9 @@ function GoalStateCapabilityExample() {
         <i />
       </span>
       <figure className="capability-goal-example__image capability-goal-example__output">
-        <figcaption>Generated goal state</figcaption>
+        <figcaption>Goal state</figcaption>
         <img
-          alt="Generated goal state with the white towel unfolded on the table"
+          alt="Goal state with the white towel unfolded on the table"
           decoding="async"
           loading="lazy"
           src={assetPath(goalCapabilityExample.generated)}
@@ -3754,7 +3952,7 @@ function GoalStateCapabilityExample() {
 function TaskUnderstandingCapabilityExample() {
   return (
     <div
-      aria-label="Task understanding example from ordered video frames to a generated task description"
+      aria-label="Task understanding example from ordered video frames to a task description"
       className="capability-task-example"
     >
       <div className="capability-task-example__frames">
@@ -3775,7 +3973,7 @@ function TaskUnderstandingCapabilityExample() {
         <i />
       </span>
       <div className="capability-task-example__description">
-        <strong>Generated task description</strong>
+        <strong>Task description</strong>
         <span>{taskCapabilityExample.description}</span>
       </div>
     </div>
@@ -3955,6 +4153,14 @@ export default function Home() {
           id="overview"
         >
           <div className="container">
+            <OriginalUnifiedOverview
+              active={overviewObjectiveKey}
+              objective={overviewObjective}
+              stage={overviewStage}
+              playbackId={overviewPlaybackId}
+              onSelect={selectOverviewObjective}
+            />
+
             <div className="project-overview__intro reveal">
               <h2>Overview</h2>
               <p>
@@ -3979,14 +4185,6 @@ export default function Home() {
                 prediction quality degradation.
               </p>
             </div>
-
-            <OriginalUnifiedOverview
-              active={overviewObjectiveKey}
-              objective={overviewObjective}
-              stage={overviewStage}
-              playbackId={overviewPlaybackId}
-              onSelect={selectOverviewObjective}
-            />
           </div>
         </section>
 
@@ -4250,15 +4448,12 @@ export default function Home() {
                 aria-labelledby="acceleration-bars-title"
               >
                 <header className="performance-subsection__header">
-                  <h3 id="acceleration-bars-title">
-                    Action Throughput Comparison
-                  </h3>
+                  <h3 id="acceleration-bars-title">Acceleration</h3>
                   <p>
-                    For masked diffusion models (MDMs), throughput is measured
-                    as end-to-end action tokens per second (TPS). For
-                    continuous-diffusion and VLM-based VLAs, it is measured as
-                    end-to-end actions per second. For Dynin-Robotics, BL
-                    denotes the number of tokens denoised at each step.
+                    Block-wise <code className="acceleration-mono">dInfer</code>{" "}
+                    decoding increases action-token throughput with longer
+                    parallel decoding blocks. Below, we compare action tokens
+                    per second (TPS).
                   </p>
                 </header>
 
@@ -4284,7 +4479,7 @@ export default function Home() {
                         </span>
                       ))}
                     </div>
-                    <span>Throughput ↑</span>
+                    <span>TPS ↑</span>
                   </div>
 
                   <div className="acceleration-bars__group is-baseline">
@@ -4331,13 +4526,19 @@ export default function Home() {
                       {accelerationResults.map((item) => (
                         <div
                           className={`acceleration-bars__row ${
-                            item.label.endsWith("(BL=35)") ? "is-fastest" : ""
+                            item.variant === "dInfer-BL35" ? "is-fastest" : ""
                           }`}
-                          key={item.label}
+                          key={item.variant}
                           role="listitem"
                         >
                           <div className="acceleration-bars__label">
-                            <strong>{item.label}</strong>
+                            <strong>
+                              Dynin-Robotics (
+                              <code className="acceleration-mono">
+                                {item.variant}
+                              </code>
+                              )
+                            </strong>
                           </div>
                           <div
                             className="acceleration-bars__track"
@@ -4354,9 +4555,9 @@ export default function Home() {
                   </div>
 
                   <figcaption className="sr-only">
-                    Action throughput comparison. Baseline models are listed
-                    first, followed by Dynin-Robotics models on a shared linear
-                    scale.
+                    Action tokens per second comparison. Baseline models are
+                    listed first, followed by Dynin-Robotics models on a shared
+                    linear scale.
                   </figcaption>
                 </figure>
               </section>
@@ -4411,38 +4612,87 @@ export default function Home() {
             <div>
               <ul className="contributors-section__list reveal">
                 <li>
-                  <strong>
-                    Hoeun Lee
-                    <sup>§ ¶</sup>
-                  </strong>
-                  <span>Project Lead</span>
+                  <a
+                    className="contributors-section__link"
+                    href="https://aidas.snu.ac.kr/people/?s=Hoeun+Lee#:~:text=Hoeun%20Lee"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <strong>
+                      Hoeun Lee
+                      <sup>§ ¶</sup>
+                    </strong>
+                    <span>Project Lead</span>
+                  </a>
                 </li>
                 <li>
-                  <strong>Jaeik Kim</strong>
-                  <span>-</span>
+                  <a
+                    className="contributors-section__link"
+                    href="https://aidas.snu.ac.kr/people/?s=Jaeik+Kim#:~:text=Jaeik%20Kim"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <strong>Jaeik Kim</strong>
+                    <span>-</span>
+                  </a>
                 </li>
                 <li>
-                  <strong>Jinhyeok Kim</strong>
-                  <span>-</span>
+                  <a
+                    className="contributors-section__link"
+                    href="https://aidas.snu.ac.kr/people/?s=Jinhyeok+Kim#:~:text=Jinhyeok%20Kim"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <strong>Jinhyeok Kim</strong>
+                    <span>-</span>
+                  </a>
                 </li>
                 <li>
-                  <strong>Hyeonggeun Kim</strong>
-                  <span>-</span>
+                  <a
+                    className="contributors-section__link"
+                    href="https://aidas.snu.ac.kr/people/?s=Hyeonggeun+Kim#:~:text=Hyeonggeun%20Kim"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <strong>Hyeonggeun Kim</strong>
+                    <span>-</span>
+                  </a>
                 </li>
                 <li>
-                  <strong>Jusang Oh</strong>
-                  <span>-</span>
+                  <a
+                    className="contributors-section__link"
+                    href="https://aidas.snu.ac.kr/people/?s=Jusang+Oh#:~:text=Jusang%20Oh"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <strong>Jusang Oh</strong>
+                    <span>-</span>
+                  </a>
                 </li>
                 <li>
-                  <strong>Geon Choi</strong>
-                  <span>-</span>
+                  <a
+                    className="contributors-section__link"
+                    href="https://aidas.snu.ac.kr/people/?s=Geon+Choi#:~:text=Geon%20Choi"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <strong>Geon Choi</strong>
+                    <span>-</span>
+                  </a>
                 </li>
                 <li>
-                  <strong>
-                    Jaeyoung Do
-                    <sup>†</sup>
-                  </strong>
-                  <span>Supervisor</span>
+                  <a
+                    className="contributors-section__link"
+                    href="https://aidas.snu.ac.kr/people/?s=Jaeyoung+Do#:~:text=Jaeyoung%20Do"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <strong>
+                      Jaeyoung Do
+                      <sup>†</sup>
+                    </strong>
+                    <span>Supervisor</span>
+                  </a>
                 </li>
               </ul>
               <div
