@@ -1042,22 +1042,13 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.match(performanceSection, /9\.221/);
   assert.match(performanceSection, /91\.236/);
   assert.match(performanceSection, /268\.834/);
-  assert.match(
-    performanceSection,
-    /<small>\((?:<!-- -->)?1\.00x(?:<!-- -->)?\)<\/small>/,
-  );
-  assert.match(
-    performanceSection,
-    /<small>\((?:<!-- -->)?9\.89x(?:<!-- -->)?\)<\/small>/,
-  );
-  assert.match(
-    performanceSection,
-    /<small>\((?:<!-- -->)?29\.15x(?:<!-- -->)?\)<\/small>/,
-  );
-  assert.match(performanceSection, /Dynin-Robotics-dInfer-BL7/);
-  assert.match(performanceSection, /Dynin-Robotics-dInfer-BL35/);
-  assert.match(performanceSection, /Vision-Language Models/);
-  assert.match(performanceSection, /Mask Diffusion Models/);
+  assert.match(performanceSection, /<em>1\.00×<\/em>/);
+  assert.match(performanceSection, /<em>9\.89×<\/em>/);
+  assert.match(performanceSection, /<em>29\.15×<\/em>/);
+  assert.match(performanceSection, /dInfer · BL7/);
+  assert.match(performanceSection, /dInfer · BL35/);
+  assert.match(performanceSection, /Vision-language model/);
+  assert.match(performanceSection, /Mask diffusion model/);
   assert.match(performanceSection, /OpenVLA-OFT/);
   assert.match(performanceSection, /LLaDA-VLA/);
   assert.match(performanceSection, /19\.114/);
@@ -1065,17 +1056,21 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.match(performanceSection, /2\.079/);
   assert.match(performanceSection, /1\.827/);
   assert.equal(
-    (performanceSection.match(/class="acceleration-comparison__value"/g) ?? [])
+    (performanceSection.match(/class="acceleration-chart__bar is-/g) ?? [])
       .length,
-    3,
+    7,
   );
-  assert.equal(
-    (performanceSection.match(/<p>Effective TPS<\/p>/g) ?? []).length,
-    3,
+  assert.match(
+    performanceSection,
+    /role="img"[^>]*aria-label="Bar chart comparing effective action-token throughput|aria-label="Bar chart comparing effective action-token throughput[^>]*role="img"/,
+  );
+  assert.match(
+    css,
+    /\.performance-subsection\.is-visible \.acceleration-chart__bar-fill \{[\s\S]*?transform: scaleY\(1\);/,
   );
   assert.doesNotMatch(
     performanceSection,
-    /Speedup|Token accuracy|Action MAE|Effective TPS measures generated/,
+    /Token accuracy|Action MAE|Effective TPS measures generated/,
   );
   assert.doesNotMatch(
     performanceSection,
@@ -1097,25 +1092,25 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     css,
-    /\.acceleration-comparison \{[\s\S]*?grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/,
+    /\.acceleration-chart__canvas \{[\s\S]*?grid-template-columns: 46px minmax\(730px, 1fr\);[\s\S]*?grid-template-rows: 336px auto 18px;/,
   );
   assert.match(
     css,
-    /\.acceleration-comparison__value \{[\s\S]*?display: flex;[\s\S]*?align-items: baseline;[\s\S]*?gap: 8px;/,
+    /\.acceleration-chart__bars,[\s\S]*?\.acceleration-chart__labels \{[\s\S]*?grid-template-columns: repeat\(7, minmax\(76px, 1fr\)\);/,
   );
   assert.match(
     css,
-    /\.acceleration-comparison__value small \{[\s\S]*?font-family: var\(--mono\);[\s\S]*?font-size: 12px;/,
+    /\.acceleration-chart__bar-fill \{[\s\S]*?transform: scaleY\(0\);[\s\S]*?transform-origin: bottom;[\s\S]*?var\(--bar-delay\)/,
   );
   assert.match(
     css,
-    /\.acceleration-baselines__scroll \{[\s\S]*?border-radius: 16px;[\s\S]*?background: var\(--bg-soft\);/,
+    /\.acceleration-chart__scroll \{[\s\S]*?overflow-x: auto;[\s\S]*?overscroll-behavior-inline: contain;/,
   );
   assert.match(
     css,
-    /\.acceleration-baselines__model td \{[\s\S]*?font-family: var\(--mono\);[\s\S]*?font-weight: 400;/,
+    /--acceleration-baseline: #a4abb2;[\s\S]*?--acceleration-base: #7b8fa4;[\s\S]*?--acceleration-bl7: #5d7895;[\s\S]*?--acceleration-bl35: #3f6388;/,
   );
-  assert.doesNotMatch(css, /\.acceleration-comparison (?:dl|dt|dd)\b/);
+  assert.doesNotMatch(css, /\.acceleration-comparison|\.acceleration-baselines/);
   assert.match(
     css,
     /\.ablation-study-grid \{[\s\S]*?grid-template-columns: minmax\(0, 3fr\) minmax\(0, 5fr\);/,
