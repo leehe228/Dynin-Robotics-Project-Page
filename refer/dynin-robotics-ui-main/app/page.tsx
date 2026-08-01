@@ -3621,7 +3621,7 @@ function PolicyCapabilityExample() {
     >
       <div className="capability-policy-example__inputs">
         <figure className="capability-policy-example__image">
-          <figcaption>Current state</figcaption>
+          <figcaption>State</figcaption>
           <img
             alt="Robot workspace before placing the glue stick in the drawer"
             decoding="async"
@@ -3665,7 +3665,7 @@ function WorldCapabilityExample() {
       className="capability-world-example"
     >
       <figure className="capability-world-example__image">
-        <figcaption>Current state</figcaption>
+        <figcaption>State</figcaption>
         <img
           alt="Robot holding a purple plush toy over a bowl"
           decoding="async"
