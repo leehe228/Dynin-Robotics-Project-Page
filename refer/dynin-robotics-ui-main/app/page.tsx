@@ -691,36 +691,47 @@ const accelerationResults = [
   {
     label: "Dynin-Robotics",
     effectiveTps: "9.221",
-    speedup: "1.00x",
   },
   {
-    label: "Dynin-Robotics-dInfer-BL7",
+    label: "Dynin-Robotics (BL=7)",
     effectiveTps: "91.236",
-    speedup: "9.89x",
   },
   {
-    label: "Dynin-Robotics-dInfer-BL35",
+    label: "Dynin-Robotics (BL=35)",
     effectiveTps: "268.834",
-    speedup: "29.15x",
   },
 ] as const;
 
 const accelerationBaselineGroups = [
   {
-    family: "Vision-Language Models",
+    family: "Vision-Language Model",
     rows: [
       { model: "OpenVLA-OFT", effectiveTps: "19.114" },
       { model: "π0.5", effectiveTps: "7.351" },
     ],
   },
   {
-    family: "Mask Diffusion Models",
+    family: "Mask Diffusion Model",
     rows: [
       { model: "LLaDA-VLA", effectiveTps: "2.079" },
       { model: "MMaDA-VLA", effectiveTps: "1.827" },
     ],
   },
 ] as const;
+
+const ACCELERATION_BAR_MAX_TPS = 300;
+const accelerationBarTicks = [0, 50, 100, 150, 200, 250, 300] as const;
+
+function getAccelerationBarStyle(effectiveTps: string) {
+  const percentage = Math.min(
+    (Number(effectiveTps) / ACCELERATION_BAR_MAX_TPS) * 100,
+    100,
+  );
+
+  return {
+    "--acceleration-bar-width": `${percentage}%`,
+  } as CSSProperties;
+}
 
 const assetBase = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -3219,8 +3230,10 @@ function LegacyObjectiveFigure({
             >
               {objective.key === "policy" && port.key === "action" ? (
                 <span
-                  className="objective-output-value is-action-vector"
-                  aria-hidden={activeStage !== 10}
+                  className={`objective-output-value is-action-vector ${
+                    isActive ? "is-visible" : ""
+                  }`}
+                  aria-hidden={!isActive}
                 >
                   <span>-0.80, -0.55, 0.18,</span>
                   <span>0.04, -0.15, 0.41</span>
@@ -4139,6 +4152,7 @@ export default function Home() {
               <section
                 className="performance-subsection reveal"
                 aria-labelledby="ablation-study-title"
+                hidden
               >
                 <header className="performance-subsection__header">
                   <h3 id="ablation-study-title">Ablation Study</h3>
@@ -4208,7 +4222,7 @@ export default function Home() {
                             <th scope="col">ID</th>
                             <th scope="col">OOD</th>
                             <th scope="col">Gap ↓</th>
-                            <th scope="col">Effective TPS ↑</th>
+                            <th scope="col">Throughput ↑</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -4232,68 +4246,119 @@ export default function Home() {
               </section>
 
               <section
-                className="performance-subsection reveal"
-                aria-labelledby="acceleration-title"
+                className="performance-subsection acceleration-bars-section reveal"
+                aria-labelledby="acceleration-bars-title"
               >
                 <header className="performance-subsection__header">
-                  <h3 id="acceleration-title">Acceleration</h3>
+                  <h3 id="acceleration-bars-title">
+                    Action Throughput Comparison
+                  </h3>
                   <p>
-                    Block-wise dInfer decoding increases action-token throughput
-                    with longer parallel decoding blocks.
+                    For masked diffusion models (MDMs), throughput is measured
+                    as end-to-end action tokens per second (TPS). For
+                    continuous-diffusion and VLM-based VLAs, it is measured as
+                    end-to-end actions per second. For Dynin-Robotics, BL
+                    denotes the number of tokens denoised at each step.
                   </p>
                 </header>
-                <div className="acceleration-comparison">
-                  {accelerationResults.map((item) => (
-                    <article key={item.label}>
-                      <span>{item.label}</span>
-                      <div className="acceleration-comparison__value">
-                        <strong>{item.effectiveTps}</strong>
-                        <small>({item.speedup})</small>
-                      </div>
-                      <p>Effective TPS</p>
-                    </article>
-                  ))}
-                </div>
-                <div className="acceleration-baselines">
-                  <h4>Other Models</h4>
-                  <div
-                    aria-label="Effective TPS of comparison models"
-                    className="acceleration-baselines__scroll"
-                    role="region"
-                    tabIndex={0}
-                  >
-                    <table>
-                      <caption className="sr-only">
-                        Effective TPS of vision-language and mask diffusion
-                        comparison models
-                      </caption>
-                      <thead>
-                        <tr>
-                          <th scope="col">Model</th>
-                          <th scope="col">Effective TPS ↑</th>
-                        </tr>
-                      </thead>
-                      {accelerationBaselineGroups.map((group) => (
-                        <tbody aria-label={group.family} key={group.family}>
-                          <tr className="acceleration-baselines__family">
-                            <th colSpan={2} scope="rowgroup">
-                              {group.family}
-                            </th>
-                          </tr>
-                          {group.rows.map((row) => (
-                            <tr
-                              className="acceleration-baselines__model"
-                              key={row.model}
-                            >
-                              <th scope="row">{row.model}</th>
-                              <td>{row.effectiveTps}</td>
-                            </tr>
-                          ))}
-                        </tbody>
+
+                <figure
+                  className="acceleration-bars"
+                  aria-labelledby="acceleration-bars-title"
+                >
+                  <div className="acceleration-bars__axis" aria-hidden="true">
+                    <span>Model</span>
+                    <div>
+                      {accelerationBarTicks.map((tick) => (
+                        <span
+                          key={tick}
+                          style={
+                            {
+                              "--acceleration-tick-position": `${
+                                (tick / ACCELERATION_BAR_MAX_TPS) * 100
+                              }%`,
+                            } as CSSProperties
+                          }
+                        >
+                          {tick}
+                        </span>
                       ))}
-                    </table>
+                    </div>
+                    <span>Throughput ↑</span>
                   </div>
-                </div>
+
+                  <div className="acceleration-bars__group is-baseline">
+                    {accelerationBaselineGroups.map((group) => (
+                      <div
+                        aria-label={group.family}
+                        className="acceleration-bars__family"
+                        key={group.family}
+                        role="group"
+                      >
+                        <h4>{group.family}</h4>
+                        <div className="acceleration-bars__rows" role="list">
+                          {group.rows.map((item) => (
+                            <div
+                              className="acceleration-bars__row"
+                              key={item.model}
+                              role="listitem"
+                            >
+                              <div className="acceleration-bars__label">
+                                <strong>{item.model}</strong>
+                              </div>
+                              <div
+                                className="acceleration-bars__track"
+                                aria-hidden="true"
+                              >
+                                <i
+                                  style={getAccelerationBarStyle(
+                                    item.effectiveTps,
+                                  )}
+                                />
+                              </div>
+                              <div className="acceleration-bars__value">
+                                <strong>{item.effectiveTps}</strong>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="acceleration-bars__group is-ours">
+                    <div className="acceleration-bars__rows" role="list">
+                      {accelerationResults.map((item) => (
+                        <div
+                          className={`acceleration-bars__row ${
+                            item.label.endsWith("(BL=35)") ? "is-fastest" : ""
+                          }`}
+                          key={item.label}
+                          role="listitem"
+                        >
+                          <div className="acceleration-bars__label">
+                            <strong>{item.label}</strong>
+                          </div>
+                          <div
+                            className="acceleration-bars__track"
+                            aria-hidden="true"
+                          >
+                            <i style={getAccelerationBarStyle(item.effectiveTps)} />
+                          </div>
+                          <div className="acceleration-bars__value">
+                            <strong>{item.effectiveTps}</strong>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <figcaption className="sr-only">
+                    Action throughput comparison. Baseline models are listed
+                    first, followed by Dynin-Robotics models on a shared linear
+                    scale.
+                  </figcaption>
+                </figure>
               </section>
 
               <section
@@ -4353,30 +4418,24 @@ export default function Home() {
                   <span>Project Lead</span>
                 </li>
                 <li>
-                  <strong>
-                    Jaeik Kim
-                    <sup>¶</sup>
-                  </strong>
-                  <span>Core Contributor</span>
-                </li>
-                <li>
-                  <strong>
-                    Jusang Oh
-                    <sup>¶</sup>
-                  </strong>
-                  <span>Core Contributor</span>
-                </li>
-                <li>
-                  <strong>Geon Choi</strong>
-                  <span>Evaluation</span>
+                  <strong>Jaeik Kim</strong>
+                  <span>-</span>
                 </li>
                 <li>
                   <strong>Jinhyeok Kim</strong>
-                  <span>Acceleration</span>
+                  <span>-</span>
                 </li>
                 <li>
                   <strong>Hyeonggeun Kim</strong>
-                  <span>Real-World Setup</span>
+                  <span>-</span>
+                </li>
+                <li>
+                  <strong>Jusang Oh</strong>
+                  <span>-</span>
+                </li>
+                <li>
+                  <strong>Geon Choi</strong>
+                  <span>-</span>
                 </li>
                 <li>
                   <strong>

@@ -295,7 +295,11 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     css,
-    /\.capability-policy-example \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) 20px minmax\(118px, 0\.48fr\);[\s\S]*?border-top: 1px solid var\(--line\);/,
+    /\.capability-policy-example \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) 20px minmax\(84px, 0\.3fr\);[\s\S]*?border-top: 1px solid var\(--line\);/,
+  );
+  assert.match(
+    css,
+    /\.capability-policy-example__inputs \{[\s\S]*?grid-template-columns:[\s\S]*?minmax\(56px, 0\.82fr\) minmax\(100px, 1\.04fr\)[\s\S]*?minmax\(56px, 0\.82fr\);/,
   );
   assert.match(
     css,
@@ -308,6 +312,10 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.match(
     css,
     /\.capability-policy-example__image img \{[\s\S]*?border: 5px solid var\(--blue-soft\);/,
+  );
+  assert.match(
+    css,
+    /@media \(min-width: 821px\) and \(max-width: 1160px\) \{[\s\S]*?\.capability-policy-example__action > div \{[\s\S]*?gap: 3px;[\s\S]*?padding: 6px;[\s\S]*?\.capability-policy-example__action span \{[\s\S]*?padding: 3px 2px;/,
   );
   assert.match(
     css,
@@ -335,7 +343,11 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     css,
-    /\.capability-goal-example \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) 20px minmax\(118px, 0\.48fr\);[\s\S]*?border-top: 1px solid var\(--line\);/,
+    /\.capability-goal-example \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) 20px minmax\(90px, 0\.35fr\);[\s\S]*?border-top: 1px solid var\(--line\);/,
+  );
+  assert.match(
+    css,
+    /\.capability-goal-example__inputs \{[\s\S]*?grid-template-columns: minmax\(84px, 0\.56fr\) minmax\(120px, 1fr\);/,
   );
   assert.match(
     css,
@@ -857,6 +869,38 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   const performanceStart = html.indexOf('id="performance"');
   const performanceEnd = html.indexOf('id="contributors"', performanceStart);
   const performanceSection = html.slice(performanceStart, performanceEnd);
+  const accelerationBarsStart = performanceSection.indexOf(
+    '<figure class="acceleration-bars"',
+  );
+  const accelerationBarsEnd = performanceSection.indexOf(
+    "</figure>",
+    accelerationBarsStart,
+  );
+  const accelerationBarsFigure = performanceSection.slice(
+    accelerationBarsStart,
+    accelerationBarsEnd,
+  );
+  assert.match(
+    performanceSection,
+    /Action Throughput Comparison/,
+  );
+  assert.match(
+    performanceSection,
+    /For Dynin-Robotics, BL denotes the number of tokens denoised at each step\./,
+  );
+  assert.doesNotMatch(
+    performanceSection,
+    /All bars share a 0–300 linear scale; higher is better\./,
+  );
+  assert.match(
+    pageSource,
+    /const accelerationBarTicks = \[0, 50, 100, 150, 200, 250, 300\] as const;/,
+  );
+  assert.doesNotMatch(
+    performanceSection,
+    /Robot Action Generation Throughput Across Models/,
+  );
+  assert.doesNotMatch(performanceSection, /Effective Throughput Comparison/);
   assert.match(performanceSection, /Benchmark Results/);
   assert.doesNotMatch(
     performanceSection,
@@ -934,15 +978,31 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.doesNotMatch(pageSource, /±/);
   assert.match(
     css,
-    /\.benchmark-table \{[\s\S]*?padding: 0;[\s\S]*?border-radius: 0;[\s\S]*?background: transparent;/,
+    /\.benchmark-table-list > \.benchmark-table \{[\s\S]*?display: flex;[\s\S]*?flex-direction: column;[\s\S]*?min-width: 0;[\s\S]*?padding: clamp\(18px, 1\.5vw, 22px\);[\s\S]*?overflow: visible;[\s\S]*?border-radius: 22px;[\s\S]*?background: var\(--surface-card\);/,
   );
   assert.match(
     css,
-    /\.benchmark-table-list \{[\s\S]*?grid-template-columns: minmax\(0, 3fr\) minmax\(0, 5fr\);[\s\S]*?align-items: start;/,
+    /\.benchmark-table-list > \.benchmark-table > \.table-scroll \{\s+flex: 1;/,
+  );
+  assert.match(
+    css,
+    /\.benchmark-table-list \{[\s\S]*?grid-template-columns: minmax\(0, 3fr\) minmax\(0, 5fr\);[\s\S]*?gap: clamp\(12px, 1\.5vw, 20px\);[\s\S]*?align-items: stretch;[\s\S]*?padding: 0;[\s\S]*?border-radius: 0;[\s\S]*?background: transparent;/,
+  );
+  assert.match(
+    css,
+    /@media \(max-width: 1120px\) \{[\s\S]*?\.benchmark-table-list \{\s+grid-template-columns: minmax\(0, 1fr\);/,
   );
   assert.match(
     css,
     /\.table-scroll \{[\s\S]*?width: 100%;[\s\S]*?border-radius: 18px;[\s\S]*?background: var\(--surface-card\);/,
+  );
+  assert.match(
+    css,
+    /\.benchmark-table > \.table-scroll \{\s+border: 1px solid var\(--line\);/,
+  );
+  assert.match(
+    css,
+    /\.benchmark-table thead th \{\s+border-bottom: 1px solid var\(--line\);/,
   );
   assert.match(
     css,
@@ -951,7 +1011,7 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.match(css, /\.benchmark-table\.is-wide table \{\s+min-width: 0;/);
   assert.match(
     css,
-    /\.benchmark-table th,\s+\.benchmark-table td \{[\s\S]*?padding: 11px 8px;[\s\S]*?border-bottom: 0;/,
+    /\.benchmark-table th,\s+\.benchmark-table td \{[\s\S]*?padding: 11px 4px;[\s\S]*?border-bottom: 0;/,
   );
   assert.match(
     css,
@@ -959,15 +1019,31 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     css,
-    /\.benchmark-table thead th \{[\s\S]*?font-size: 10px;/,
+    /\.benchmark-table th:first-child \{[\s\S]*?width: 34%;/,
   );
   assert.match(
     css,
-    /\.benchmark-family-row th \{[\s\S]*?font-size: 11px;/,
+    /\.benchmark-table\.is-wide th:first-child \{\s+width: 22%;/,
   );
   assert.match(
     css,
-    /@media \(max-width: 1120px\) \{[\s\S]*?\.benchmark-table-list \{\s+grid-template-columns: 1fr;/,
+    /\.benchmark-table thead th \{[\s\S]*?font-size: 9px;/,
+  );
+  assert.match(
+    css,
+    /\.benchmark-family-row th \{[\s\S]*?padding: 13px 12px 5px;[\s\S]*?font-size: 11px;/,
+  );
+  assert.match(
+    css,
+    /\.benchmark-family-row > th:first-child,\s+\.benchmark-table\.is-wide \.benchmark-family-row > th:first-child \{\s+width: auto;/,
+  );
+  assert.match(
+    css,
+    /\.benchmark-table thead th:first-child,\s+\.benchmark-model-row > th:first-child \{\s+padding-left: 12px;/,
+  );
+  assert.match(
+    css,
+    /\.benchmark-table thead th:last-child,\s+\.benchmark-model-row > td:last-child \{\s+padding-right: 12px;/,
   );
   assert.doesNotMatch(css, /\.results-note\b/);
   assert.doesNotMatch(
@@ -979,15 +1055,23 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.equal(
     (performanceSection.match(/class="performance-subsection reveal"/g) ?? [])
       .length,
-    3,
+    2,
   );
   assert.ok(
     performanceSection.indexOf("Ablation Study") <
-      performanceSection.indexOf("Acceleration"),
+      performanceSection.indexOf(
+        "Action Throughput Comparison",
+      ),
   );
   assert.ok(
-    performanceSection.indexOf("Acceleration") <
+    performanceSection.indexOf(
+      "Action Throughput Comparison",
+    ) <
       performanceSection.indexOf("VLM and Video Model Analysis"),
+  );
+  assert.doesNotMatch(
+    performanceSection,
+    /aria-labelledby="acceleration-title"|id="acceleration-title"|<h3>Acceleration<\/h3>/,
   );
   assert.match(
     performanceSection,
@@ -1042,40 +1126,29 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.match(performanceSection, /9\.221/);
   assert.match(performanceSection, /91\.236/);
   assert.match(performanceSection, /268\.834/);
-  assert.match(
-    performanceSection,
-    /<small>\((?:<!-- -->)?1\.00x(?:<!-- -->)?\)<\/small>/,
+  assert.match(performanceSection, /Dynin-Robotics \(BL=7\)/);
+  assert.match(performanceSection, /Dynin-Robotics \(BL=35\)/);
+  assert.match(performanceSection, /Vision-Language Model/);
+  assert.match(performanceSection, /Mask Diffusion Model/);
+  assert.doesNotMatch(
+    accelerationBarsFigure,
+    /<h4>Baselines<\/h4>|<h4>Dynin-Robotics<\/h4>/,
   );
-  assert.match(
-    performanceSection,
-    /<small>\((?:<!-- -->)?9\.89x(?:<!-- -->)?\)<\/small>/,
+  assert.match(accelerationBarsFigure, /<h4>Vision-Language Model<\/h4>/);
+  assert.match(accelerationBarsFigure, /<h4>Mask Diffusion Model<\/h4>/);
+  assert.doesNotMatch(
+    accelerationBarsFigure,
+    /speedup|1\.00x|9\.89x|29\.15x/,
   );
-  assert.match(
-    performanceSection,
-    /<small>\((?:<!-- -->)?29\.15x(?:<!-- -->)?\)<\/small>/,
-  );
-  assert.match(performanceSection, /Dynin-Robotics-dInfer-BL7/);
-  assert.match(performanceSection, /Dynin-Robotics-dInfer-BL35/);
-  assert.match(performanceSection, /Vision-Language Models/);
-  assert.match(performanceSection, /Mask Diffusion Models/);
   assert.match(performanceSection, /OpenVLA-OFT/);
   assert.match(performanceSection, /LLaDA-VLA/);
   assert.match(performanceSection, /19\.114/);
   assert.match(performanceSection, /7\.351/);
   assert.match(performanceSection, /2\.079/);
   assert.match(performanceSection, /1\.827/);
-  assert.equal(
-    (performanceSection.match(/class="acceleration-comparison__value"/g) ?? [])
-      .length,
-    3,
-  );
-  assert.equal(
-    (performanceSection.match(/<p>Effective TPS<\/p>/g) ?? []).length,
-    3,
-  );
   assert.doesNotMatch(
     performanceSection,
-    /Speedup|Token accuracy|Action MAE|Effective TPS measures generated/,
+    /Speedup|Token accuracy|Action MAE|Throughput measures generated/,
   );
   assert.doesNotMatch(
     performanceSection,
@@ -1097,25 +1170,57 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     css,
-    /\.acceleration-comparison \{[\s\S]*?grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/,
+    /\.acceleration-bars-section \.performance-subsection__header p \{[\s\S]*?width: 100%;[\s\S]*?max-width: none;/,
   );
   assert.match(
     css,
-    /\.acceleration-comparison__value \{[\s\S]*?display: flex;[\s\S]*?align-items: baseline;[\s\S]*?gap: 8px;/,
+    /\.acceleration-bars \{[\s\S]*?border: 1px solid var\(--line\);[\s\S]*?border-radius: 16px;[\s\S]*?background: var\(--surface-card\);/,
   );
   assert.match(
     css,
-    /\.acceleration-comparison__value small \{[\s\S]*?font-family: var\(--mono\);[\s\S]*?font-size: 12px;/,
+    /\.performance-subsections \{[\s\S]*?margin-top: clamp\(24px, 3vw, 36px\);/,
   );
   assert.match(
     css,
-    /\.acceleration-baselines__scroll \{[\s\S]*?border-radius: 16px;[\s\S]*?background: var\(--bg-soft\);/,
+    /\.acceleration-bars__group\.is-baseline \{\s+padding-bottom: 0;/,
   );
   assert.match(
     css,
-    /\.acceleration-baselines__model td \{[\s\S]*?font-family: var\(--mono\);[\s\S]*?font-weight: 400;/,
+    /\.acceleration-bars__group \+ \.acceleration-bars__group \{[\s\S]*?padding-top: 4px;[\s\S]*?border-top: 0;/,
   );
-  assert.doesNotMatch(css, /\.acceleration-comparison (?:dl|dt|dd)\b/);
+  assert.match(
+    css,
+    /\.acceleration-bars__group\.is-ours \.acceleration-bars__track > i \{[\s\S]*?background: var\(--blue-soft\);/,
+  );
+  assert.match(
+    css,
+    /\.acceleration-bars__group\.is-ours \.acceleration-bars__track > i::after \{[\s\S]*?animation: acceleration-bar-wave 2\.4s linear infinite;/,
+  );
+  assert.match(css, /@keyframes acceleration-bar-wave \{/);
+  assert.match(
+    css,
+    /\.acceleration-bars__axis > div > span::after \{[\s\S]*?top: calc\(100% \+ 12px\);[\s\S]*?width: 1px;[\s\S]*?height: 5px;[\s\S]*?background: var\(--line-strong\);/,
+  );
+  assert.match(
+    css,
+    /\.acceleration-bars__axis \{[\s\S]*?font-family: var\(--mono\);[\s\S]*?font-size: 9px;[\s\S]*?font-weight: 600;/,
+  );
+  assert.match(
+    css,
+    /\.acceleration-bars__track \{[\s\S]*?calc\(100% \/ 6\) 100%,[\s\S]*?background-origin: border-box;/,
+  );
+  assert.match(
+    css,
+    /\.acceleration-bars__track > i \{[\s\S]*?border-radius: 999px 0 0 999px;/,
+  );
+  assert.match(
+    css,
+    /@media \(max-width: 820px\) \{[\s\S]*?\.acceleration-bars__track \{\s+grid-column: 1;\s+grid-row: 2;/,
+  );
+  assert.doesNotMatch(
+    css,
+    /\.acceleration-comparison\b|\.acceleration-baselines\b/,
+  );
   assert.match(
     css,
     /\.ablation-study-grid \{[\s\S]*?grid-template-columns: minmax\(0, 3fr\) minmax\(0, 5fr\);/,
@@ -1981,6 +2086,22 @@ test("ships a system-aware three-way theme toggle", async () => {
   assert.match(
     css,
     /\.objective-output-value\.is-image \{\s+bottom: calc\(100% \+ 16px\);\s+width: 66px;\s+height: 66px;\s+min-height: 66px;/,
+  );
+  assert.match(
+    pageSource,
+    /className=\{`objective-output-value is-action-vector \$\{[\s\S]*?isActive \? "is-visible" : ""[\s\S]*?\}`\}[\s\S]*?aria-hidden=\{!isActive\}/,
+  );
+  assert.match(
+    css,
+    /\.generation-stage\.objective-policy\.has-narrative-animation[\s\S]*?\.objective-output-value\.is-action-vector\.is-visible \{\s+animation: overview-policy-result-appear 340ms ease 610ms both;/,
+  );
+  assert.match(
+    css,
+    /\.generation-stage\.has-narrative-animation\.phase-10[\s\S]*?\.objective-output-value:not\(\.is-action-vector\) \{/,
+  );
+  assert.match(
+    css,
+    /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.objective-output-value\.is-action-vector\.is-visible \{\s+animation-delay: 0ms !important;/,
   );
   assert.match(
     css,
