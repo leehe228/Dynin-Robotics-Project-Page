@@ -1011,7 +1011,7 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     pageSource,
-    /selectInferenceMode\(next\);[\s\S]*?onClick=\{\(\) => selectInferenceMode\(index\)\}/,
+    /selectInferenceMode\(next\);[\s\S]*?onClick=\{\(event\) => \{\s*selectInferenceMode\(index\);\s*if \(event\.detail > 0\) event\.currentTarget\.blur\(\);\s*\}\}/,
   );
   assert.match(
     pageSource,
@@ -2603,6 +2603,10 @@ test("ships a system-aware three-way theme toggle", async () => {
   assert.match(
     pageSource,
     /const \[overviewSwitcherFocused, setOverviewSwitcherFocused\] = useState\(false\);[\s\S]*?useEffect\(\(\) => \{\s*if \(overviewSwitcherFocused\) return;/,
+  );
+  assert.match(
+    pageSource,
+    /onClick=\{\(event\) => \{\s*onSelect\(key\);\s*if \(event\.detail > 0\) event\.currentTarget\.blur\(\);\s*\}\}/,
   );
   assert.match(
     css,

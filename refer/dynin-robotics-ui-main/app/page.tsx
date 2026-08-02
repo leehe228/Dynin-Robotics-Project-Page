@@ -2277,7 +2277,10 @@ function InferenceExplorer() {
             id={`inference-tab-${item.key}`}
             tabIndex={activeMode === index ? 0 : -1}
             className={activeMode === index ? "is-active" : ""}
-            onClick={() => selectInferenceMode(index)}
+            onClick={(event) => {
+              selectInferenceMode(index);
+              if (event.detail > 0) event.currentTarget.blur();
+            }}
             key={item.key}
           >
             {item.short}
@@ -3324,7 +3327,10 @@ function LegacyObjectiveSwitcher({
           aria-selected={active === key}
           tabIndex={active === key ? 0 : -1}
           className={active === key ? "is-active" : ""}
-          onClick={() => onSelect(key)}
+          onClick={(event) => {
+            onSelect(key);
+            if (event.detail > 0) event.currentTarget.blur();
+          }}
           onKeyDown={(event) => handleSwitcherKeyDown(event, key)}
           key={key}
         >
