@@ -71,14 +71,154 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.match(html, /overview-original-ui/);
   assert.match(html, /paradigm-legend-inline/);
   assert.match(html, /Figure token legend/);
-  assert.match(html, /name="twitter:card" content="summary"/);
-  assert.doesNotMatch(html, /property="og:image(?::[^"]+)?"/);
-  assert.doesNotMatch(html, /name="twitter:image(?::[^"]+)?"/);
+  assert.match(html, /name="twitter:card" content="summary_large_image"/);
+  assert.match(
+    html,
+    /property="og:image" content="https:\/\/leehe228\.github\.io\/Dynin-Robotics-Project-Page\/social-preview\.png"/,
+  );
+  assert.match(html, /property="og:image:width" content="2438"/);
+  assert.match(html, /property="og:image:height" content="1508"/);
+  assert.match(
+    html,
+    /name="twitter:image" content="https:\/\/leehe228\.github\.io\/Dynin-Robotics-Project-Page\/social-preview\.png"/,
+  );
   assert.doesNotMatch(pageSource, /paradigm-legend-popover/);
   assert.doesNotMatch(pageSource, /ⓘ/);
+  assert.doesNotMatch(
+    pageSource,
+    /className="paradigm-legend__swatch is-optional"/,
+  );
+  assert.match(
+    pageSource,
+    /label: "Text",[\s\S]*?slot: "text",[\s\S]*?optional: false/,
+  );
+  assert.match(
+    pageSource,
+    /label: "Next states",[\s\S]*?slot: "future",[\s\S]*?optional: false/,
+  );
   assert.match(
     css,
     /\.paradigm-legend-inline \{[\s\S]*?border: 0;[\s\S]*?background: transparent;[\s\S]*?outline: 0;/,
+  );
+  for (const [variable, value] of [
+    ["--paradigm-model-fill", "#ffffff"],
+    ["--paradigm-model-stroke", "#8b9da8"],
+    ["--paradigm-token-text", "#f7f7f7"],
+    ["--paradigm-token-text-stroke", "#8b9da8"],
+    ["--paradigm-token-vision", "#e5f1f7"],
+    ["--paradigm-token-vision-stroke", "#0071a3"],
+    ["--paradigm-token-action", "#f6efe6"],
+    ["--paradigm-token-action-stroke", "#a55300"],
+    ["--paradigm-token-sensor", "#f3eef7"],
+    ["--paradigm-token-sensor-stroke", "#77409b"],
+    ["--paradigm-noise-dark", "#e1e1e3"],
+    ["--paradigm-noise-light", "#fafafb"],
+    ["--paradigm-noise-stroke", "#bac6cf"],
+  ]) {
+    assert.match(css, new RegExp(`${variable}: ${value};`));
+  }
+  assert.match(
+    css,
+    /:root:not\(\[data-theme="light"\]\) \.paradigm-figure \{[\s\S]*?--paradigm-model-fill: #07090a;[\s\S]*?--paradigm-model-stroke: #3d4249;[\s\S]*?--paradigm-token-text: #0f1112;[\s\S]*?--paradigm-token-text-stroke: #caccd0;[\s\S]*?--paradigm-token-vision: #18232a;[\s\S]*?--paradigm-token-vision-stroke: #7cc7f1;[\s\S]*?--paradigm-token-action: #262115;[\s\S]*?--paradigm-token-action-stroke: #eab455;[\s\S]*?--paradigm-noise-dark: #1e2021;[\s\S]*?--paradigm-noise-light: #0c0e0f;[\s\S]*?--paradigm-noise-stroke: #1e2021;/,
+  );
+  assert.match(
+    css,
+    /:root:not\(\[data-theme="light"\]\)[\s\S]*?\.token-strip\.modality-text[\s\S]*?i \{\s*color: #caccd0;[\s\S]*?\.token-strip\.modality-vision[\s\S]*?i \{\s*color: #7cc7f1;[\s\S]*?\.token-strip\.modality-action[\s\S]*?i \{\s*color: #eab455;/,
+  );
+  assert.match(
+    css,
+    /:root:not\(\[data-theme="light"\]\) \.paradigm-card__primary \{\s*color: #ffffff;/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-card \.token-strip i \{[\s\S]*?min-width: 34px;[\s\S]*?height: 34px;[\s\S]*?border-width: 1px;[\s\S]*?border-radius: 5px;[\s\S]*?font-size: 9px;[\s\S]*?font-weight: 600;/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-card__primary,\s*\.paradigm-card__expert \{[\s\S]*?min-height: 44px;[\s\S]*?border-width: 1px;[\s\S]*?border-radius: 8px;/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-grid \{[\s\S]*?grid-template-columns: 320px 329px 425px;[\s\S]*?gap: 30px;[\s\S]*?justify-content: space-between;/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-card \{[\s\S]*?grid-template-rows: 58px 50px 56px;[\s\S]*?gap: 11px;[\s\S]*?padding: 38px 20px 25px;/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-card__primary strong,\s*\.paradigm-card__expert strong \{[\s\S]*?font-size: 13px;[\s\S]*?font-weight: 600;/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-card\.is-vlm \.paradigm-card__core \{[\s\S]*?grid-template-columns: 151px 56px 73px;/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-card\.is-vlm::before \{[\s\S]*?left: 0;[\s\S]*?width: 191px;/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-card\.is-vlm::after \{[\s\S]*?right: 0;[\s\S]*?width: 113px;/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-card\.is-vlm \.paradigm-card__latent \{[\s\S]*?width: calc\(100% - 10px\);/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-card\.is-video \.paradigm-card__core \{[\s\S]*?width: 289px;[\s\S]*?grid-template-columns: 190px 26px 73px;[\s\S]*?justify-self: end;/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-card\.is-unified \.paradigm-card__primary \{[\s\S]*?width: min\(100%, 385px\);/,
+  );
+  assert.match(css, /--understanding-bg: rgba\(135, 214, 174, 0\.13\);/);
+  assert.match(css, /--generation-bg: rgba\(190, 139, 234, 0\.13\);/);
+  assert.match(
+    css,
+    /\.paradigm-card\.is-unified::before \{[\s\S]*?background: linear-gradient\([\s\S]*?135deg,[\s\S]*?var\(--understanding-bg\) 0%,[\s\S]*?var\(--generation-bg\) 100%[\s\S]*?\);[\s\S]*?animation: none;[\s\S]*?will-change: auto;/,
+  );
+  assert.match(
+    css,
+    /:root\[data-theme="light"\] \.paradigm-card\.is-unified::before \{\s+background: linear-gradient\(135deg, #f1fdee 0%, #fdf7ff 100%\);/,
+  );
+  assert.doesNotMatch(css, /@keyframes paradigm-unified-flow/);
+  assert.match(
+    css,
+    /\.paradigm-card\.is-unified \.paradigm-card__outputs \{[\s\S]*?width: min\(100%, 385px\);[\s\S]*?grid-template-columns: 117px 34px 83px 73px 5px 73px;/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-card\.is-unified \.paradigm-card__inputs \{[\s\S]*?width: min\(100%, 385px\);[\s\S]*?grid-template-columns: 73px 34px 34px 73px 151px;[\s\S]*?gap: 5px;/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-card\.is-vlm \.paradigm-card__inputs \{[\s\S]*?grid-template-columns: 73px 34px 34px minmax\(0, 1fr\) 73px;[\s\S]*?gap: 5px;/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-card\.is-vlm[\s\S]*?\.is-slot-text-generation[\s\S]*?\.token-strip\s+i \{[\s\S]*?border-color: transparent;[\s\S]*?background: transparent;/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-card\.is-vlm[\s\S]*?\.is-slot-text-generation[\s\S]*?\.token-strip\s+i::before \{[\s\S]*?bottom: calc\(100% \+ 58px\);[\s\S]*?height: 10px;/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-card\.is-vlm \.paradigm-card__outputs \.is-slot-text \{[\s\S]*?transform: translateX\(-34px\);/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-card__mask \.token-strip i::after \{[\s\S]*?bottom: calc\(100% \+ 59\.5px\);[\s\S]*?width: 7px;[\s\S]*?height: 7px;[\s\S]*?border-top: 1px solid var\(--line-strong\);[\s\S]*?border-left: 1px solid var\(--line-strong\);/,
+  );
+  assert.match(
+    css,
+    /\.paradigm-card__mask \.token-strip i::before \{[\s\S]*?bottom: calc\(100% \+ 8px\);[\s\S]*?height: 60px;/,
+  );
+  assert.doesNotMatch(
+    css,
+    /\.paradigm-card__outputs \.token-strip i::(?:before|after) \{/,
   );
   assert.match(
     css,
@@ -294,7 +434,11 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     css,
-    /\.capability-summary-card \{[\s\S]*?grid-template-rows: auto auto auto auto;[\s\S]*?align-content: start;[\s\S]*?padding: clamp\(26px, 3\.2vw, 40px\);[\s\S]*?border-radius: 22px;[\s\S]*?background: var\(--surface-card\);/,
+    /\.capability-summary-card \{[\s\S]*?grid-template-rows: auto auto auto auto;[\s\S]*?align-content: start;[\s\S]*?padding: clamp\(26px, 3\.2vw, 40px\);[\s\S]*?border-radius: 22px;[\s\S]*?background: var\(--surface-card\);[\s\S]*?outline: 1px solid color-mix\(in srgb, var\(--line\) 72%, transparent\);[\s\S]*?outline-offset: -1px;/,
+  );
+  assert.match(
+    css,
+    /:root\[data-theme="light"\] \.capability-summary-card \{\s+outline: 0;/,
   );
   assert.match(
     css,
@@ -310,7 +454,7 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     css,
-    /\.capability-summary-card__io dd span \{[\s\S]*?border-radius: 8px;[\s\S]*?font-size: 12px;/,
+    /\.capability-summary-card__io dd span \{[\s\S]*?border-radius: 8px;[\s\S]*?font-family: var\(--mono\);[\s\S]*?font-size: 12px;/,
   );
   assert.match(
     css,
@@ -787,7 +931,39 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     pageSource,
-    /<div className="inference-explorer__figure-shell">[\s\S]*?<\/section>\s*<\/div>\s*<div\s+className="inference-tabs"/,
+    /<div className="inference-explorer__figure-shell">[\s\S]*?<\/section>\s*<\/div>\s*<div\s+ref=\{tabsRef\}\s+className="inference-tabs"/,
+  );
+  assert.match(
+    css,
+    /\.inference-tabs \{[\s\S]*?display: flex;[\s\S]*?width: max-content;[\s\S]*?max-width: 100%;[\s\S]*?min-height: 32px;[\s\S]*?gap: 0;[\s\S]*?padding: 1px 2px;[\s\S]*?overflow: hidden;[\s\S]*?border-radius: 999px;[\s\S]*?background: #f9fafb;/,
+  );
+  assert.match(
+    css,
+    /\.inference-tabs__plate \{[\s\S]*?display: block;[\s\S]*?top: 1px;[\s\S]*?bottom: 1px;[\s\S]*?width: var\(--inference-plate-width, 0px\);[\s\S]*?border: 1px solid #bfe7f9;[\s\S]*?background: #f1f6fa;[\s\S]*?transform: translate3d\(var\(--inference-plate-left, 0px\), 0, 0\);[\s\S]*?width 300ms cubic-bezier\(0\.22, 1, 0\.36, 1\),[\s\S]*?transform 300ms cubic-bezier\(0\.22, 1, 0\.36, 1\),/,
+  );
+  assert.match(
+    css,
+    /\.inference-tabs button \{[\s\S]*?flex: 0 0 auto;[\s\S]*?width: auto;[\s\S]*?min-height: 32px;[\s\S]*?padding: 5px 14px;[\s\S]*?border-radius: 999px;[\s\S]*?color: #707070;[\s\S]*?font-size: 13px;[\s\S]*?font-weight: 500;[\s\S]*?white-space: nowrap;/,
+  );
+  assert.match(
+    css,
+    /\.inference-tabs button\.is-active \{[\s\S]*?border-color: transparent;[\s\S]*?background: transparent;[\s\S]*?color: #000000;[\s\S]*?font-weight: 700;/,
+  );
+  assert.match(
+    css,
+    /:root:not\(\[data-theme="light"\]\) \.overview-original-ui \.objective-switcher,\s*:root:not\(\[data-theme="light"\]\) \.inference-tabs \{\s*background: #202020;/,
+  );
+  assert.match(
+    css,
+    /:root:not\(\[data-theme="light"\]\)[\s\S]*?\.overview-original-ui[\s\S]*?\.objective-switcher[\s\S]*?button,\s*:root:not\(\[data-theme="light"\]\) \.inference-tabs button \{\s*color: #a0a0a0;/,
+  );
+  assert.match(
+    css,
+    /:root:not\(\[data-theme="light"\]\)[\s\S]*?\.overview-original-ui[\s\S]*?\.objective-switcher[\s\S]*?button\.is-active,\s*:root:not\(\[data-theme="light"\]\) \.inference-tabs button\.is-active \{\s*border-color: transparent;\s*background: transparent;\s*color: #ffffff;/,
+  );
+  assert.match(
+    css,
+    /:root:not\(\[data-theme="light"\]\)[\s\S]*?\.objective-switcher__plate,\s*:root:not\(\[data-theme="light"\]\) \.inference-tabs__plate \{\s*border-color: #317d9f;\s*background: #1e1e1e;/,
   );
   assert.match(
     css,
@@ -831,11 +1007,19 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     pageSource,
-    /motionPreference\.addEventListener\("change", scheduleNextMode\);[\s\S]*?motionPreference\.removeEventListener\("change", scheduleNextMode\);[\s\S]*?\}, \[activeMode, cycleResetId\]\);/,
+    /if \(tabsFocused\) return;[\s\S]*?motionPreference\.addEventListener\("change", scheduleNextMode\);[\s\S]*?motionPreference\.removeEventListener\("change", scheduleNextMode\);[\s\S]*?\}, \[activeMode, cycleResetId, tabsFocused\]\);/,
   );
   assert.match(
     pageSource,
     /selectInferenceMode\(next\);[\s\S]*?onClick=\{\(\) => selectInferenceMode\(index\)\}/,
+  );
+  assert.match(
+    pageSource,
+    /tabs\.style\.setProperty\([\s\S]*?"--inference-plate-left"[\s\S]*?activeButton\.offsetLeft[\s\S]*?"--inference-plate-width"[\s\S]*?activeButton\.offsetWidth/,
+  );
+  assert.match(
+    pageSource,
+    /onFocusCapture=\{\(\) => setTabsFocused\(true\)\}[\s\S]*?onBlurCapture=\{\(event\) => \{[\s\S]*?event\.currentTarget\.contains\(event\.relatedTarget as Node \| null\)[\s\S]*?setTabsFocused\(false\);/,
   );
   assert.doesNotMatch(
     pageSource,
@@ -924,18 +1108,29 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   const contributorsEnd = html.indexOf("</main>", contributorsStart);
   const contributorsSection = html.slice(contributorsStart, contributorsEnd);
   const expectedContributors = [
-    ["Hoeun Lee", "Project Lead"],
-    ["Jaeik Kim", "-"],
-    ["Jinhyeok Kim", "-"],
-    ["Hyeonggeun Kim", "-"],
-    ["Jusang Oh", "-"],
-    ["Geon Choi", "-"],
+    ["Hoeun Lee", "Project Leader"],
+    ["Jaeik Kim", "Core Contributor"],
+    ["Jusang Oh", "Core Contributor"],
+    ["Jinhyeok Kim", "Acceleration"],
+    ["Geon Choi", "Evaluation"],
+    ["Hyeonggeun Kim", "Infrastructure"],
     ["Jaeyoung Do", "Supervisor"],
   ];
 
   assert.equal(
     (contributorsSection.match(/<a\b/g) ?? []).length,
     expectedContributors.length,
+  );
+  const contributorNamePositions = expectedContributors.map(([name]) =>
+    contributorsSection.indexOf(name),
+  );
+  assert.ok(
+    contributorNamePositions.every(
+      (position, index) =>
+        position !== -1 &&
+        (index === 0 || position > contributorNamePositions[index - 1]),
+    ),
+    "contributors should render in the requested order",
   );
   for (const [name, role] of expectedContributors) {
     const encodedName = encodeURIComponent(name);
@@ -958,6 +1153,12 @@ test("exports the complete Dynin-Robotics landing page", async () => {
     assert.ok(contributorLink.includes(name));
     assert.ok(contributorLink.includes(`<span>${role}</span>`));
   }
+  for (const coreContributor of ["Jaeik Kim", "Jusang Oh"]) {
+    const nameIndex = contributorsSection.indexOf(coreContributor);
+    const strongEnd = contributorsSection.indexOf("</strong>", nameIndex);
+    const nameMarkup = contributorsSection.slice(nameIndex, strongEnd);
+    assert.match(nameMarkup, /<sup>¶<\/sup>/);
+  }
 
   const contributorLinkStyle =
     css.match(/\.contributors-section__link\s*\{([^}]*)\}/)?.[1] ?? "";
@@ -979,6 +1180,14 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(contributorFocusStyle, /outline:/);
   assert.match(contributorFocusStyle, /outline-offset:/);
+  assert.match(
+    css,
+    /\.contributors-section__link > span \{[\s\S]*?font-size: clamp\(13px, 1\.1vw, 15px\);/,
+  );
+  assert.match(
+    css,
+    /\.contributors-section__notes p \{[\s\S]*?font-size: clamp\(12px, 1vw, 14px\);/,
+  );
   const accelerationBarsStart = performanceSection.indexOf(
     '<figure class="acceleration-bars"',
   );
@@ -996,7 +1205,15 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     performanceSection,
-    /Block-wise(?:<!-- -->)?\s*<code class="acceleration-mono">dInfer<\/code>/,
+    /Dynin-Robotics uses a modified(?:<!-- -->)?\s*<code class="acceleration-mono">dInfer<\/code> framework/,
+  );
+  assert.match(
+    performanceSection,
+    /block-wise confidence-aware parallel decoding and approximate KV-cache reuse/,
+  );
+  assert.match(
+    performanceSection,
+    /system-level optimizations \(torch\.compile, CUDA Graph replay, and loop unrolling\) for efficient action decoding/,
   );
   assert.match(
     performanceSection,
@@ -1015,7 +1232,12 @@ test("exports the complete Dynin-Robotics landing page", async () => {
     /Robot Action Generation Throughput Across Models/,
   );
   assert.doesNotMatch(performanceSection, /Effective Throughput Comparison/);
-  assert.match(performanceSection, /Benchmark Results/);
+  assert.match(performanceSection, /<h2>Performance<\/h2>/);
+  assert.match(
+    performanceSection,
+    /The throughput results also summarize action-decoding gains from the modified dInfer framework\./,
+  );
+  assert.doesNotMatch(performanceSection, /Benchmark Results/);
   assert.doesNotMatch(
     performanceSection,
     /Results in the context of major model families/,
@@ -1045,20 +1267,38 @@ test("exports the complete Dynin-Robotics landing page", async () => {
     /aria-label="LIBERO-Plus benchmark results"/,
   );
   assert.match(performanceSection, /Success rate \(%\)/);
-  assert.equal((performanceSection.match(/AVG ↑/g) ?? []).length, 2);
+  assert.equal(
+    (
+      performanceSection.match(
+        /AVG<span class="benchmark-table__sort-arrow">↑<\/span>/g,
+      ) ?? []
+    ).length,
+    2,
+  );
   assert.doesNotMatch(performanceSection, /Average ↑/);
   assert.doesNotMatch(
     performanceSection,
     /<th scope="col">Family<\/th>/,
   );
   assert.equal(
-    (performanceSection.match(/class="benchmark-family-row"/g) ?? []).length,
+    (
+      performanceSection.match(
+        /class="benchmark-family-row(?: has-divider)?"/g,
+      ) ?? []
+    ).length,
     5,
   );
   assert.equal(
-    (performanceSection.match(/Dynin-Robotics \(Ours\)/g) ?? []).length,
+    (performanceSection.match(/class="benchmark-family-row has-divider"/g) ?? [])
+      .length,
+    3,
+  );
+  assert.equal(
+    (performanceSection.match(/<th scope="row">Dynin-Robotics<\/th>/g) ?? [])
+      .length,
     2,
   );
+  assert.doesNotMatch(performanceSection, /Dynin-Robotics \(Ours\)/);
   assert.match(performanceSection, /Vision-Language Model/);
   assert.match(performanceSection, /Video Generation Model/);
   assert.match(performanceSection, /Unified Model/);
@@ -1129,7 +1369,7 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     css,
-    /\.benchmark-table tbody td \{[\s\S]*?font-family: var\(--mono\);[\s\S]*?font-weight: 400;/,
+    /\.benchmark-table tbody td \{[\s\S]*?font-family: var\(--mono\);[\s\S]*?font-size: 11px;[\s\S]*?font-weight: 400;/,
   );
   assert.match(
     css,
@@ -1145,7 +1385,15 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     css,
+    /\.benchmark-table__sort-arrow,\s+\.acceleration-bars__sort-arrow \{[\s\S]*?font-size: 12px;[\s\S]*?line-height: 0\.75;/,
+  );
+  assert.match(
+    css,
     /\.benchmark-family-row th \{[\s\S]*?padding: 13px 12px 5px;[\s\S]*?font-size: 11px;/,
+  );
+  assert.match(
+    css,
+    /\.benchmark-family-row\.has-divider th \{\s+border-top: 0\.5px solid var\(--line\);/,
   );
   assert.match(
     css,
@@ -1163,6 +1411,10 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.doesNotMatch(
     css,
     /\.benchmark-table tbody tr\.is-ours \{[\s\S]*?background:/,
+  );
+  assert.match(
+    css,
+    /\.benchmark-table tbody tr\.is-ours th,\s+\.benchmark-table tbody tr\.is-ours td \{\s+color: var\(--blue\);/,
   );
   assert.doesNotMatch(css, /\.benchmark-table tbody tr\.is-ours td:last-child/);
   assert.doesNotMatch(css, /\.benchmark-table tbody td:nth-child\(2\)/);
@@ -1248,7 +1500,10 @@ test("exports the complete Dynin-Robotics landing page", async () => {
     performanceSection,
     /Dynin-Robotics \(<code class="acceleration-mono">dInfer-BL35<\/code>\)/,
   );
-  assert.match(accelerationBarsFigure, /<span>TPS ↑<\/span>/);
+  assert.match(
+    accelerationBarsFigure,
+    /<span>TPS<span class="acceleration-bars__sort-arrow">↑<\/span><\/span>/,
+  );
   assert.match(performanceSection, /Vision-Language Model/);
   assert.match(performanceSection, /Mask Diffusion Model/);
   assert.doesNotMatch(
@@ -1311,6 +1566,10 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     css,
+    /\.acceleration-bars__family \+ \.acceleration-bars__family \{[\s\S]*?margin-top: 6px;[\s\S]*?padding-top: 10px;[\s\S]*?border-top: 0\.5px solid var\(--line\);/,
+  );
+  assert.match(
+    css,
     /\.acceleration-bars__group \+ \.acceleration-bars__group \{[\s\S]*?padding-top: 4px;[\s\S]*?border-top: 0;/,
   );
   assert.match(
@@ -1321,6 +1580,11 @@ test("exports the complete Dynin-Robotics landing page", async () => {
     css,
     /\.acceleration-bars__group\.is-ours \.acceleration-bars__track > i::after \{[\s\S]*?animation: acceleration-bar-wave 2\.4s linear infinite;/,
   );
+  assert.match(
+    css,
+    /\.acceleration-bars__group\.is-ours \.acceleration-bars__label strong,[\s\S]*?\.acceleration-bars__group\.is-ours \.acceleration-bars__value strong \{\s+color: var\(--blue\);/,
+  );
+  assert.doesNotMatch(performanceSection, /is-fastest/);
   assert.match(css, /@keyframes acceleration-bar-wave \{/);
   assert.match(
     css,
@@ -1377,6 +1641,10 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.doesNotMatch(css, /\.performance-grid\b|\.ablation-card\b|\.vlabench-card\b/);
   assert.doesNotMatch(css, /\.ablation-list\b|\.inference-ablation-table\b/);
   assert.match(html, /\/Dynin-Robotics-Project-Page\/_next\//);
+  assert.match(
+    html,
+    /https:\/\/leehe228\.github\.io\/Dynin-Robotics-Project-Page\/social-preview\.png/,
+  );
   assert.doesNotMatch(html, /Dynin-Robotics-Project-Page\/og\.png/);
   assert.doesNotMatch(html, /kim-jake|dynin-robotics-ui/);
   assert.doesNotMatch(
@@ -1386,8 +1654,13 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.match(html, /Model and code will be released soon\./);
   assert.match(
     html,
-    /6 Inference Modes<br\/>Aligned on One Multi-Stage Pipeline/,
+    /Composable Unified Inference/,
   );
+  assert.match(
+    html,
+    /One post-trained model composes policy, goal-state, and world-model predictions into six inference strategies, ranging from direct action decoding to goal-guided joint denoising and dynamics-aware candidate reranking\./,
+  );
+  assert.doesNotMatch(html, /6 Inference Modes|Multi-Stage Pipeline/);
   assert.match(
     html,
     /<span class="header-paper is-disabled" aria-disabled="true">Paper ↗<\/span>/,
@@ -1519,6 +1792,7 @@ test("exports the complete Dynin-Robotics landing page", async () => {
 
 test("copies required paper assets into the static export", async () => {
   const files = [
+    "social-preview.png",
     "paper.pdf",
     "assets/paper/world-modeling-qualitative.png",
     "assets/paper/goal-state-qualitative.png",
@@ -1753,7 +2027,7 @@ test("renders world, goal-state, and task-understanding evidence", async () => {
   );
   assert.match(
     css,
-    /\.demonstration-video-stack video \{[\s\S]*?aspect-ratio: 1;[\s\S]*?object-fit: cover;/,
+    /\.demonstration-video-stack video \{[\s\S]*?aspect-ratio: 1;[\s\S]*?border-radius: 22px;[\s\S]*?object-fit: cover;/,
   );
   assert.match(
     css,
@@ -1761,7 +2035,7 @@ test("renders world, goal-state, and task-understanding evidence", async () => {
   );
   assert.match(
     css,
-    /\.demonstration-real-world-grid video \{[\s\S]*?aspect-ratio: 2 \/ 3;[\s\S]*?object-fit: cover;/,
+    /\.demonstration-real-world-grid video \{[\s\S]*?aspect-ratio: 2 \/ 3;[\s\S]*?border-radius: 22px;[\s\S]*?object-fit: cover;/,
   );
   assert.match(
     css,
@@ -1769,7 +2043,7 @@ test("renders world, goal-state, and task-understanding evidence", async () => {
   );
   assert.match(
     css,
-    /\.demonstration-real-world-note \{[\s\S]*?margin: 0;[\s\S]*?font-size: clamp\(14px, 1vw, 15px\);/,
+    /\.demonstration-real-world-note \{[\s\S]*?margin: 0;[\s\S]*?font-size: 13px;/,
   );
   assert.doesNotMatch(html, /class="qualitative-tabs"/);
   assert.equal(
@@ -2256,6 +2530,34 @@ test("ships a system-aware three-way theme toggle", async () => {
   assert.match(html, /theme-auto/);
   assert.match(
     css,
+    /\.theme-toggle \{[\s\S]*?grid-template-columns: repeat\(3, 23px\);[\s\S]*?gap: 1px;[\s\S]*?padding: 2px;[\s\S]*?border: 1px solid var\(--line-strong\);[\s\S]*?border-radius: 6px;/,
+  );
+  assert.match(
+    css,
+    /\.theme-toggle__label \{[\s\S]*?width: 23px;[\s\S]*?height: 23px;[\s\S]*?border: 1px solid transparent;[\s\S]*?border-radius: 4px;/,
+  );
+  assert.match(
+    css,
+    /:root\[data-theme="light"\][\s\S]*?\.theme-toggle__option[\s\S]*?input:checked[\s\S]*?\+ \.theme-toggle__label \{\s+color: #ffffff;/,
+  );
+  assert.match(
+    css,
+    /\.overview-original-ui \.generation-core \{[^}]*background: #101012;/,
+  );
+  assert.match(
+    css,
+    /:root\[data-theme="light"\] \.overview-original-ui \.generation-core \{[^}]*background: #ffffff;/,
+  );
+  assert.doesNotMatch(
+    css,
+    /\.overview-original-ui \.generation-core \{[^}]*background: linear-gradient/,
+  );
+  assert.doesNotMatch(
+    css,
+    /:root\[data-theme="light"\] \.overview-original-ui \.generation-core \{[^}]*background: linear-gradient/,
+  );
+  assert.match(
+    css,
     /:root\[data-theme="light"\] \.overview-original-ui/,
   );
   assert.match(
@@ -2264,11 +2566,47 @@ test("ships a system-aware three-way theme toggle", async () => {
   );
   assert.match(
     css,
-    /\.overview-original-ui \.objective-switcher \{[\s\S]*?background: transparent;/,
+    /\.overview-original-ui \.objective-switcher \{[\s\S]*?display: flex;[\s\S]*?width: max-content;[\s\S]*?max-width: 100%;[\s\S]*?min-height: 32px;[\s\S]*?gap: 0;[\s\S]*?padding: 1px 2px;[\s\S]*?overflow: hidden;[\s\S]*?border: 0;[\s\S]*?border-radius: 999px;[\s\S]*?background: #f9fafb;/,
   );
   assert.match(
     css,
-    /\.overview-original-ui \.objective-switcher \{[\s\S]*?width: min\(100%, 640px\);[\s\S]*?height: 44px;/,
+    /@media \(max-width: 760px\) \{[\s\S]*?\.overview-original-ui \.objective-switcher \{[\s\S]*?padding: 1px 2px;[\s\S]*?\.overview-original-ui \.objective-switcher button \{[\s\S]*?font-size: 12px;/,
+  );
+  assert.match(
+    css,
+    /@media \(max-width: 480px\) \{\s*\.overview-original-ui \.objective-switcher button \{[\s\S]*?padding-inline: 4px;[\s\S]*?font-size: 9px;/,
+  );
+  assert.match(
+    css,
+    /\.overview-original-ui \.objective-switcher__plate \{[\s\S]*?display: block;[\s\S]*?width: var\(--switcher-plate-width, 0px\);[\s\S]*?border: 1px solid #bfe7f9;[\s\S]*?background: #f1f6fa;[\s\S]*?transform: translate3d\(var\(--switcher-plate-left, 0px\), 0, 0\);[\s\S]*?width 300ms cubic-bezier\(0\.22, 1, 0\.36, 1\),[\s\S]*?transform 300ms cubic-bezier\(0\.22, 1, 0\.36, 1\),/,
+  );
+  assert.match(
+    css,
+    /\.overview-original-ui \.objective-switcher button \{[\s\S]*?flex: 0 0 auto;[\s\S]*?width: auto;[\s\S]*?min-height: 32px;[\s\S]*?padding: 5px 14px;[\s\S]*?border-radius: 999px;[\s\S]*?color: #707070;[\s\S]*?font-size: 13px;[\s\S]*?font-weight: 500;[\s\S]*?white-space: nowrap;/,
+  );
+  assert.match(
+    css,
+    /\.overview-original-ui \.objective-switcher button\.is-active \{[\s\S]*?border-color: transparent;[\s\S]*?background: transparent;[\s\S]*?color: #000000;[\s\S]*?font-weight: 700;/,
+  );
+  assert.match(
+    pageSource,
+    /switcher\.style\.setProperty\([\s\S]*?"--switcher-plate-left"[\s\S]*?activeButton\.offsetLeft[\s\S]*?"--switcher-plate-width"[\s\S]*?activeButton\.offsetWidth/,
+  );
+  assert.match(
+    pageSource,
+    /event\.key === "ArrowRight"[\s\S]*?event\.key === "ArrowLeft"[\s\S]*?event\.key === "Home"[\s\S]*?event\.key === "End"[\s\S]*?buttonRefs\.current\[nextKey\]\?\.focus\(\);[\s\S]*?onSelect\(nextKey\);/,
+  );
+  assert.match(
+    pageSource,
+    /onFocusCapture=\{\(\) => onFocusWithinChange\?\.\(true\)\}[\s\S]*?onBlurCapture=\{\(event\) => \{[\s\S]*?event\.currentTarget\.contains\(event\.relatedTarget as Node \| null\)[\s\S]*?onFocusWithinChange\?\.\(false\);/,
+  );
+  assert.match(
+    pageSource,
+    /const \[overviewSwitcherFocused, setOverviewSwitcherFocused\] = useState\(false\);[\s\S]*?useEffect\(\(\) => \{\s*if \(overviewSwitcherFocused\) return;/,
+  );
+  assert.match(
+    css,
+    /@media \(max-width: 760px\) \{[\s\S]*?\.overview-original-ui \.objective-switcher \{[\s\S]*?display: flex;[\s\S]*?width: max-content;[\s\S]*?max-width: 100%;[\s\S]*?\.overview-original-ui \.objective-switcher button \{[\s\S]*?min-height: 30px;[\s\S]*?padding: 5px 12px;[\s\S]*?font-size: 12px;/,
   );
   assert.match(
     css,
@@ -2276,7 +2614,7 @@ test("ships a system-aware three-way theme toggle", async () => {
   );
   assert.match(
     pageSource,
-    /<div className="overview-original-ui__figure-shell">[\s\S]*?<div className="unified-workspace">[\s\S]*?<\/div>\s*<\/div>\s*<LegacyObjectiveSwitcher active=\{active\} onSelect=\{onSelect\} \/>/,
+    /<div className="overview-original-ui__figure-shell">[\s\S]*?<div className="unified-workspace">[\s\S]*?<\/div>\s*<\/div>\s*<LegacyObjectiveSwitcher[\s\S]*?active=\{active\}[\s\S]*?onSelect=\{onSelect\}[\s\S]*?onFocusWithinChange=\{onSwitcherFocusChange\}[\s\S]*?\/>/,
   );
   assert.match(
     css,
@@ -2455,5 +2793,21 @@ test("ships a system-aware three-way theme toggle", async () => {
   assert.match(
     pageSource,
     /prefers-reduced-motion: reduce[\s\S]*?matches/,
+  );
+});
+
+test("ships the AIDAS LAB footer link and university affiliation", async () => {
+  const html = await readFile(indexUrl, "utf8");
+  const css = await readFile(new URL("app/globals.css", projectRoot), "utf8");
+
+  assert.match(
+    html,
+    /<a class="site-footer__lab-link" href="https:\/\/aidas\.snu\.ac\.kr" target="_blank" rel="noreferrer"><strong>AIDAS LAB<\/strong><\/a>/,
+  );
+  assert.match(html, /<p>Seoul National University<\/p>/);
+  assert.doesNotMatch(html, /AIDAS Lab · Seoul National University/);
+  assert.match(
+    css,
+    /\.site-footer__lab-link \{[\s\S]*?display: inline-flex;[\s\S]*?color: inherit;[\s\S]*?text-decoration: none;[\s\S]*?transform: translateY\(5px\);/,
   );
 });

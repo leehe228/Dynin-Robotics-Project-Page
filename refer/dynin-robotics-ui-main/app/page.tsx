@@ -2,9 +2,11 @@
 
 import {
   type CSSProperties,
+  type KeyboardEvent,
   type ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -607,7 +609,7 @@ const liberoRows = [
     values: ["98.8", "99.8", "98.0", "95.2", "98.0"],
   },
   {
-    model: "Dynin-Robotics (Ours)",
+    model: "Dynin-Robotics",
     family: "Unified Model",
     values: ["98.9", "99.8", "97.8", "95.8", "98.1"],
     ours: true,
@@ -646,7 +648,7 @@ const liberoPlusRows = [
     values: ["1.8", "46.2", "69.6", "69.0", "81.0", "21.2", "31.9", "42.9"],
   },
   {
-    model: "Dynin-Robotics (Ours)",
+    model: "Dynin-Robotics",
     family: "Unified Model",
     values: [
       "59.8",
@@ -978,7 +980,7 @@ function ParadigmFigure() {
           symbol: "T",
           count: 1,
           slot: "text",
-          optional: true,
+          optional: false,
         },
         {
           label: "Actions",
@@ -989,7 +991,10 @@ function ParadigmFigure() {
           optional: false,
         },
       ],
-      masks: [{ count: 2, slot: "generation" }],
+      masks: [
+        { count: 1, slot: "text-generation" },
+        { count: 2, slot: "generation" },
+      ],
     },
     {
       key: "video",
@@ -1019,7 +1024,7 @@ function ParadigmFigure() {
           symbol: "V",
           count: 2,
           slot: "future",
-          optional: true,
+          optional: false,
         },
         {
           label: "Actions",
@@ -1208,13 +1213,6 @@ function ParadigmFigure() {
               aria-hidden="true"
             />
             <span>Noise / Mask</span>
-          </li>
-          <li>
-            <i
-              className="paradigm-legend__swatch is-optional"
-              aria-hidden="true"
-            />
-            <span>Optional</span>
           </li>
           <li>
             <i className="paradigm-legend__latent" aria-hidden="true" />
@@ -1992,6 +1990,9 @@ function InferenceStage({
 function InferenceExplorer() {
   const [activeMode, setActiveMode] = useState(0);
   const [cycleResetId, setCycleResetId] = useState(0);
+  const [tabsFocused, setTabsFocused] = useState(false);
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const tabButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const mode = inferenceModes[activeMode];
 
   const selectInferenceMode = useCallback((index: number) => {
@@ -1999,7 +2000,40 @@ function InferenceExplorer() {
     setCycleResetId((current) => current + 1);
   }, []);
 
+  const updateInferencePlatePosition = useCallback(() => {
+    const tabs = tabsRef.current;
+    const activeButton = tabButtonRefs.current[activeMode];
+    if (!tabs || !activeButton) return;
+
+    tabs.style.setProperty(
+      "--inference-plate-left",
+      `${activeButton.offsetLeft}px`,
+    );
+    tabs.style.setProperty(
+      "--inference-plate-width",
+      `${activeButton.offsetWidth}px`,
+    );
+    tabs.dataset.plateReady = "true";
+  }, [activeMode]);
+
+  useLayoutEffect(() => {
+    updateInferencePlatePosition();
+
+    const tabs = tabsRef.current;
+    if (!tabs || typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(updateInferencePlatePosition);
+    observer.observe(tabs);
+    tabButtonRefs.current.forEach((button) => {
+      if (button) observer.observe(button);
+    });
+
+    return () => observer.disconnect();
+  }, [updateInferencePlatePosition]);
+
   useEffect(() => {
+    if (tabsFocused) return;
+
     const motionPreference = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     );
@@ -2021,7 +2055,7 @@ function InferenceExplorer() {
       if (modeTimer !== undefined) window.clearTimeout(modeTimer);
       motionPreference.removeEventListener("change", scheduleNextMode);
     };
-  }, [activeMode, cycleResetId]);
+  }, [activeMode, cycleResetId, tabsFocused]);
 
   const worldActive = mode.world === "rerank";
   const policyVariant =
@@ -2193,6 +2227,7 @@ function InferenceExplorer() {
       </div>
 
       <div
+        ref={tabsRef}
         className="inference-tabs"
         role="tablist"
         aria-label="Inference mode"
@@ -2201,6 +2236,14 @@ function InferenceExplorer() {
             "--active-index": activeMode,
           } as CSSProperties
         }
+        onFocusCapture={() => setTabsFocused(true)}
+        onBlurCapture={(event) => {
+          if (
+            !event.currentTarget.contains(event.relatedTarget as Node | null)
+          ) {
+            setTabsFocused(false);
+          }
+        }}
         onKeyDown={(event) => {
           if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
             return;
@@ -2224,6 +2267,9 @@ function InferenceExplorer() {
         <span className="inference-tabs__plate" aria-hidden="true" />
         {inferenceModes.map((item, index) => (
           <button
+            ref={(node) => {
+              tabButtonRefs.current[index] = node;
+            }}
             type="button"
             role="tab"
             aria-selected={activeMode === index}
@@ -3073,6 +3119,7 @@ function BenchmarkTable({
   description,
   columns,
   rows,
+  showFamilyDividers = false,
 }: {
   title: string;
   description?: string;
@@ -3083,6 +3130,7 @@ function BenchmarkTable({
     values: string[];
     ours?: boolean;
   }>;
+  showFamilyDividers?: boolean;
 }) {
   const rowGroups = rows.reduce<
     Array<{ family: string; rows: typeof rows }>
@@ -3122,14 +3170,25 @@ function BenchmarkTable({
               <th scope="col">Model</th>
               {columns.map((column) => (
                 <th scope="col" key={column}>
-                  {column}
+                  {column.endsWith(" ↑") ? (
+                    <>
+                      {column.slice(0, -2)}
+                      <span className="benchmark-table__sort-arrow">↑</span>
+                    </>
+                  ) : (
+                    column
+                  )}
                 </th>
               ))}
             </tr>
           </thead>
-          {rowGroups.map((group) => (
+          {rowGroups.map((group, groupIndex) => (
             <tbody aria-label={group.family} key={group.family}>
-              <tr className="benchmark-family-row">
+              <tr
+                className={`benchmark-family-row${
+                  showFamilyDividers && groupIndex > 0 ? " has-divider" : ""
+                }`}
+              >
                 <th colSpan={columns.length + 1} scope="rowgroup">
                   {group.family}
                 </th>
@@ -3156,22 +3215,98 @@ function BenchmarkTable({
 function LegacyObjectiveSwitcher({
   active,
   onSelect,
+  onFocusWithinChange,
 }: {
   active: ObjectiveKey;
   onSelect: (key: ObjectiveKey) => void;
+  onFocusWithinChange?: (focused: boolean) => void;
 }) {
   const labels: Record<ObjectiveKey, string> = {
     policy: "Policy",
     world: "World Modeling",
-    goal: "Goal State\nPrediction",
+    goal: "Goal-State Prediction",
     instruction: "Task Understanding",
+  };
+  const switcherRef = useRef<HTMLDivElement>(null);
+  const buttonRefs = useRef<Record<ObjectiveKey, HTMLButtonElement | null>>({
+    policy: null,
+    world: null,
+    goal: null,
+    instruction: null,
+  });
+
+  const updatePlatePosition = useCallback(() => {
+    const switcher = switcherRef.current;
+    const activeButton = buttonRefs.current[active];
+    if (!switcher || !activeButton) return;
+
+    switcher.style.setProperty(
+      "--switcher-plate-left",
+      `${activeButton.offsetLeft}px`,
+    );
+    switcher.style.setProperty(
+      "--switcher-plate-width",
+      `${activeButton.offsetWidth}px`,
+    );
+    switcher.dataset.plateReady = "true";
+  }, [active]);
+
+  useLayoutEffect(() => {
+    updatePlatePosition();
+
+    const switcher = switcherRef.current;
+    if (!switcher || typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(updatePlatePosition);
+    observer.observe(switcher);
+    objectiveOrder.forEach((key) => {
+      const button = buttonRefs.current[key];
+      if (button) observer.observe(button);
+    });
+
+    return () => observer.disconnect();
+  }, [updatePlatePosition]);
+
+  const handleSwitcherKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    key: ObjectiveKey,
+  ) => {
+    const currentIndex = objectiveOrder.indexOf(key);
+    let nextIndex: number | null = null;
+
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      nextIndex = (currentIndex + 1) % objectiveOrder.length;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      nextIndex =
+        (currentIndex - 1 + objectiveOrder.length) % objectiveOrder.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = objectiveOrder.length - 1;
+    }
+
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    const nextKey = objectiveOrder[nextIndex];
+    buttonRefs.current[nextKey]?.focus();
+    onSelect(nextKey);
   };
 
   return (
     <div
+      ref={switcherRef}
       className="objective-switcher"
       role="tablist"
       aria-label="Robot capability"
+      onFocusCapture={() => onFocusWithinChange?.(true)}
+      onBlurCapture={(event) => {
+        if (
+          !event.currentTarget.contains(event.relatedTarget as Node | null)
+        ) {
+          onFocusWithinChange?.(false);
+        }
+      }}
       style={
         {
           "--active-index": objectiveOrder.indexOf(active),
@@ -3181,11 +3316,16 @@ function LegacyObjectiveSwitcher({
       <span className="objective-switcher__plate" aria-hidden="true" />
       {objectiveOrder.map((key) => (
         <button
+          ref={(node) => {
+            buttonRefs.current[key] = node;
+          }}
           type="button"
           role="tab"
           aria-selected={active === key}
+          tabIndex={active === key ? 0 : -1}
           className={active === key ? "is-active" : ""}
           onClick={() => onSelect(key)}
+          onKeyDown={(event) => handleSwitcherKeyDown(event, key)}
           key={key}
         >
           {labels[key]}
@@ -3686,12 +3826,14 @@ function OriginalUnifiedOverview({
   stage,
   playbackId,
   onSelect,
+  onSwitcherFocusChange,
 }: {
   active: ObjectiveKey;
   objective: Objective;
   stage: number;
   playbackId: number;
   onSelect: (key: ObjectiveKey) => void;
+  onSwitcherFocusChange: (focused: boolean) => void;
 }) {
   return (
     <div className="overview-original-ui reveal">
@@ -3704,7 +3846,11 @@ function OriginalUnifiedOverview({
           />
         </div>
       </div>
-      <LegacyObjectiveSwitcher active={active} onSelect={onSelect} />
+      <LegacyObjectiveSwitcher
+        active={active}
+        onSelect={onSelect}
+        onFocusWithinChange={onSwitcherFocusChange}
+      />
     </div>
   );
 }
@@ -3986,6 +4132,7 @@ export default function Home() {
     useState<ObjectiveKey>("policy");
   const [overviewStage, setOverviewStage] = useState(0);
   const [overviewPlaybackId, setOverviewPlaybackId] = useState(0);
+  const [overviewSwitcherFocused, setOverviewSwitcherFocused] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const overviewTimerTokenRef = useRef(0);
   const overviewObjective = objectives[overviewObjectiveKey];
@@ -3998,6 +4145,8 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (overviewSwitcherFocused) return;
+
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const hasNarrativeAnimation =
       overviewNarrativeObjectives.includes(overviewObjectiveKey);
@@ -4037,7 +4186,12 @@ export default function Home() {
       setOverviewStage((value) => value + 1);
     }, duration);
     return () => window.clearTimeout(overviewTimer);
-  }, [overviewObjectiveKey, overviewPlaybackId, overviewStage]);
+  }, [
+    overviewObjectiveKey,
+    overviewPlaybackId,
+    overviewStage,
+    overviewSwitcherFocused,
+  ]);
 
   useEffect(() => {
     const nodes = Array.from(document.querySelectorAll<HTMLElement>(".reveal"));
@@ -4164,6 +4318,7 @@ export default function Home() {
               stage={overviewStage}
               playbackId={overviewPlaybackId}
               onSelect={selectOverviewObjective}
+              onSwitcherFocusChange={setOverviewSwitcherFocused}
             />
 
             <div className="project-overview__intro reveal">
@@ -4299,14 +4454,8 @@ export default function Home() {
             <SectionLead
               index="05"
               eyebrow="Unified inference"
-              title={
-                <>
-                  6 Inference Modes
-                  <br />
-                  Aligned on One Multi-Stage Pipeline
-                </>
-              }
-              body="The same post-trained model can compose goal-state, policy, and world-model queries in different ways. Keeping all three positions fixed makes each mode’s active and inactive queries—and the extra cost of joint decoding or reranking—explicit."
+              title="Composable Unified Inference"
+              body="One post-trained model composes policy, goal-state, and world-model predictions into six inference strategies, ranging from direct action decoding to goal-guided joint denoising and dynamics-aware candidate reranking."
             />
             <InferenceExplorer />
           </div>
@@ -4321,7 +4470,7 @@ export default function Home() {
               index="06"
               eyebrow="Demonstrations"
               title="Demonstrations"
-              body="Demonstration rollouts across LIBERO, LIBERO+, and real-world manipulation."
+              body="Demonstration rollouts across LIBERO, LIBERO+, and real-world manipulation tasks on the Franka Research 3 platform."
             />
             <DemonstrationResults />
           </div>
@@ -4344,14 +4493,15 @@ export default function Home() {
             <SectionLead
               index="08"
               eyebrow="Performance"
-              title="Benchmark Results"
-              body="The selected comparison rows below retain the paper’s model-family grouping. LIBERO is close to saturation, while LIBERO-Plus more clearly exposes robustness to camera, embodiment, language, lighting, background, noise, and layout shifts."
+              title="Performance"
+              body="The selected comparison rows below retain the paper’s model-family grouping. LIBERO is close to saturation, while LIBERO-Plus more clearly exposes robustness to camera, embodiment, language, lighting, background, noise, and layout shifts. The throughput results also summarize action-decoding gains from the modified dInfer framework."
             />
             <div className="benchmark-table-list">
               <BenchmarkTable
                 title="LIBERO"
                 columns={["Spatial", "Object", "Goal", "Long", "AVG ↑"]}
                 rows={liberoRows}
+                showFamilyDividers
               />
               <BenchmarkTable
                 title="LIBERO-Plus"
@@ -4366,6 +4516,7 @@ export default function Home() {
                   "AVG ↑",
                 ]}
                 rows={liberoPlusRows}
+                showFamilyDividers
               />
             </div>
 
@@ -4473,10 +4624,13 @@ export default function Home() {
                 <header className="performance-subsection__header">
                   <h3 id="acceleration-bars-title">Acceleration</h3>
                   <p>
-                    Block-wise <code className="acceleration-mono">dInfer</code>{" "}
-                    decoding increases action-token throughput with longer
-                    parallel decoding blocks. Below, we compare action tokens
-                    per second (TPS).
+                    Dynin-Robotics uses a modified{" "}
+                    <code className="acceleration-mono">dInfer</code> framework
+                    with algorithmic optimizations (block-wise confidence-aware
+                    parallel decoding and approximate KV-cache reuse) and
+                    system-level optimizations (torch.compile, CUDA Graph
+                    replay, and loop unrolling) for efficient action decoding.
+                    Below, we compare action tokens per second (TPS).
                   </p>
                 </header>
 
@@ -4502,7 +4656,10 @@ export default function Home() {
                         </span>
                       ))}
                     </div>
-                    <span>TPS ↑</span>
+                    <span>
+                      TPS
+                      <span className="acceleration-bars__sort-arrow">↑</span>
+                    </span>
                   </div>
 
                   <div className="acceleration-bars__group is-baseline">
@@ -4548,9 +4705,7 @@ export default function Home() {
                     <div className="acceleration-bars__rows" role="list">
                       {accelerationResults.map((item) => (
                         <div
-                          className={`acceleration-bars__row ${
-                            item.variant === "dInfer-BL35" ? "is-fastest" : ""
-                          }`}
+                          className="acceleration-bars__row"
                           key={item.variant}
                           role="listitem"
                         >
@@ -4645,7 +4800,7 @@ export default function Home() {
                       Hoeun Lee
                       <sup>§ ¶</sup>
                     </strong>
-                    <span>Project Lead</span>
+                    <span>Project Leader</span>
                   </a>
                 </li>
                 <li>
@@ -4655,8 +4810,25 @@ export default function Home() {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <strong>Jaeik Kim</strong>
-                    <span>-</span>
+                    <strong>
+                      Jaeik Kim
+                      <sup>¶</sup>
+                    </strong>
+                    <span>Core Contributor</span>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    className="contributors-section__link"
+                    href="https://aidas.snu.ac.kr/people/?s=Jusang+Oh#:~:text=Jusang%20Oh"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <strong>
+                      Jusang Oh
+                      <sup>¶</sup>
+                    </strong>
+                    <span>Core Contributor</span>
                   </a>
                 </li>
                 <li>
@@ -4667,29 +4839,7 @@ export default function Home() {
                     rel="noopener noreferrer"
                   >
                     <strong>Jinhyeok Kim</strong>
-                    <span>-</span>
-                  </a>
-                </li>
-                <li>
-                  <a
-                    className="contributors-section__link"
-                    href="https://aidas.snu.ac.kr/people/?s=Hyeonggeun+Kim#:~:text=Hyeonggeun%20Kim"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <strong>Hyeonggeun Kim</strong>
-                    <span>-</span>
-                  </a>
-                </li>
-                <li>
-                  <a
-                    className="contributors-section__link"
-                    href="https://aidas.snu.ac.kr/people/?s=Jusang+Oh#:~:text=Jusang%20Oh"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <strong>Jusang Oh</strong>
-                    <span>-</span>
+                    <span>Acceleration</span>
                   </a>
                 </li>
                 <li>
@@ -4700,7 +4850,18 @@ export default function Home() {
                     rel="noopener noreferrer"
                   >
                     <strong>Geon Choi</strong>
-                    <span>-</span>
+                    <span>Evaluation</span>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    className="contributors-section__link"
+                    href="https://aidas.snu.ac.kr/people/?s=Hyeonggeun+Kim#:~:text=Hyeonggeun%20Kim"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <strong>Hyeonggeun Kim</strong>
+                    <span>Infrastructure</span>
                   </a>
                 </li>
                 <li>
@@ -4740,8 +4901,15 @@ export default function Home() {
       <footer className="site-footer">
         <div className="container">
           <div>
-            <strong>Dynin-Robotics</strong>
-            <p>AIDAS Lab · Seoul National University</p>
+            <a
+              className="site-footer__lab-link"
+              href="https://aidas.snu.ac.kr"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <strong>AIDAS LAB</strong>
+            </a>
+            <p>Seoul National University</p>
           </div>
           <ThemeToggle />
           <div>

@@ -35,6 +35,11 @@ const title =
 const description =
   "One masked-diffusion backbone for robot policy, world modeling, goal-state prediction, and task understanding.";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const socialImage = siteUrl
+  ? new URL(`${basePath}/social-preview.png`, siteUrl).toString()
+  : undefined;
+const socialImageAlt = "Dynin-Robotics project page overview";
 const themeScript = `
   (() => {
     try {
@@ -69,11 +74,26 @@ export const metadata: Metadata = {
     description,
     type: "website",
     ...(siteUrl ? { url: siteUrl } : {}),
+    ...(socialImage
+      ? {
+          images: [
+            {
+              url: socialImage,
+              width: 2438,
+              height: 1508,
+              alt: socialImageAlt,
+            },
+          ],
+        }
+      : {}),
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title,
     description,
+    ...(socialImage
+      ? { images: [{ url: socialImage, alt: socialImageAlt }] }
+      : {}),
   },
 };
 
