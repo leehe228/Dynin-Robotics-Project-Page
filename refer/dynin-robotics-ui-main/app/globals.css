@@ -297,6 +297,13 @@ dd {
   font-weight: 500;
 }
 
+.header-paper.is-disabled {
+  color: var(--quiet);
+  cursor: default;
+  opacity: 0.58;
+  user-select: none;
+}
+
 .hero {
   display: grid;
   grid-template-columns: minmax(340px, 0.78fr) minmax(560px, 1.22fr);
@@ -390,7 +397,7 @@ dd {
     background 180ms ease;
 }
 
-.hero__links a:first-child {
+.hero__links .is-paper {
   border-color: rgba(98, 201, 245, 0.55);
   background: var(--blue-soft);
 }
@@ -406,6 +413,13 @@ dd {
   color: var(--quiet);
   cursor: default;
   opacity: 0.58;
+}
+
+.hero__links button.is-paper:disabled {
+  border-color: rgba(98, 201, 245, 0.55);
+  background: var(--blue-soft);
+  color: var(--quiet);
+  opacity: 0.68;
 }
 
 .hero__release-note {

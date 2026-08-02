@@ -2,6 +2,7 @@
 
 import {
   type CSSProperties,
+  type ReactNode,
   useCallback,
   useEffect,
   useRef,
@@ -934,7 +935,7 @@ function SectionLead({
 }: {
   index: string;
   eyebrow: string;
-  title: string;
+  title: ReactNode;
   body: string;
 }) {
   return (
@@ -4110,7 +4111,9 @@ export default function Home() {
           })}
         </nav>
         <div className="header-links">
-          <a href={assetPath("/paper.pdf")}>Paper ↗</a>
+          <span className="header-paper is-disabled" aria-disabled="true">
+            Paper ↗
+          </span>
           <a href="https://aidas.snu.ac.kr" target="_blank" rel="noreferrer">
             AIDAS Lab
           </a>
@@ -4134,7 +4137,9 @@ export default function Home() {
               backbone.
             </p>
             <div className="hero__links">
-              <a href={assetPath("/paper.pdf")}>Paper</a>
+              <button className="is-paper" type="button" disabled>
+                Paper
+              </button>
               <button type="button" disabled>
                 Model
               </button>
@@ -4193,7 +4198,7 @@ export default function Home() {
             <SectionLead
               index="01"
               eyebrow="Overview"
-              title="Why unify semantics, dynamics, and control?"
+              title="Why Unify Semantics, Dynamics, and Control?"
               body="Language-oriented policies understand instructions, while video and world models predict how scenes change. Dynin-Robotics brings both abilities—and action generation—into one shared model."
             />
             <ParadigmFigure />
@@ -4205,7 +4210,13 @@ export default function Home() {
             <SectionLead
               index="02"
               eyebrow="Capabilities"
-              title="Four Capabilities for Robotics, One Unified Model"
+              title={
+                <>
+                  Four Capabilities for Robotics,
+                  <br />
+                  One Unified Model
+                </>
+              }
               body="Dynin-Robotics unifies policy generation, world modeling, task understanding, and goal-state prediction in a single masked-diffusion backbone. Each capability is realized as a different conditional denoising query over the same multimodal robot trajectory."
             />
             <div className="capability-summary-grid reveal">
@@ -4258,7 +4269,13 @@ export default function Home() {
             <SectionLead
               index="03"
               eyebrow="Architecture"
-              title={"One backbone,\nmultiple parallel token pathways"}
+              title={
+                <>
+                  One Backbone,
+                  <br />
+                  Multiple Parallel Token Pathways
+                </>
+              }
               body="A shared bidirectional Transformer reconstructs masked text, image/video, and action tokens through three parallel modality pathways."
             />
             <ArchitectureFigure />
@@ -4282,7 +4299,13 @@ export default function Home() {
             <SectionLead
               index="05"
               eyebrow="Unified inference"
-              title="Six modes aligned on one three-stage pipeline"
+              title={
+                <>
+                  6 Inference Modes
+                  <br />
+                  Aligned on One Multi-Stage Pipeline
+                </>
+              }
               body="The same post-trained model can compose goal-state, policy, and world-model queries in different ways. Keeping all three positions fixed makes each mode’s active and inactive queries—and the extra cost of joint decoding or reranking—explicit."
             />
             <InferenceExplorer />

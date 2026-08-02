@@ -89,6 +89,7 @@ test("exports the complete Dynin-Robotics landing page", async () => {
     /\.section\.section--project-overview \{[\s\S]*?padding-top: 28px;/,
   );
   assert.match(html, /aria-label="Robot capability"/);
+  assert.match(html, /Why Unify Semantics, Dynamics, and Control\?/);
   assert.match(html, /id="capabilities"/);
   const capabilitiesStart = html.indexOf('id="capabilities"');
   const capabilitiesEnd = html.indexOf('id="model"', capabilitiesStart);
@@ -98,7 +99,7 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     capabilitiesSection,
-    /Four Capabilities for Robotics, One Unified Model/,
+    /Four Capabilities for Robotics,<br\/>One Unified Model/,
   );
   assert.match(
     capabilitiesSection,
@@ -470,7 +471,7 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   );
   assert.match(
     pageSource,
-    /title=\{"One backbone,\\nmultiple parallel token pathways"\}/,
+    /One Backbone,[\s\S]*?<br \/>[\s\S]*?Multiple Parallel Token Pathways/,
   );
   assert.match(
     css,
@@ -1376,7 +1377,6 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.doesNotMatch(css, /\.performance-grid\b|\.ablation-card\b|\.vlabench-card\b/);
   assert.doesNotMatch(css, /\.ablation-list\b|\.inference-ablation-table\b/);
   assert.match(html, /\/Dynin-Robotics-Project-Page\/_next\//);
-  assert.match(html, /\/Dynin-Robotics-Project-Page\/paper\.pdf/);
   assert.doesNotMatch(html, /Dynin-Robotics-Project-Page\/og\.png/);
   assert.doesNotMatch(html, /kim-jake|dynin-robotics-ui/);
   assert.doesNotMatch(
@@ -1384,6 +1384,19 @@ test("exports the complete Dynin-Robotics landing page", async () => {
     /github\.com\/AIDASLab\/Dynin-Robotics|huggingface\.co\/snu-aidas\/Dynin-Robotics|https:\/\/dynin\.ai\/robotics\//,
   );
   assert.match(html, /Model and code will be released soon\./);
+  assert.match(
+    html,
+    /6 Inference Modes<br\/>Aligned on One Multi-Stage Pipeline/,
+  );
+  assert.match(
+    html,
+    /<span class="header-paper is-disabled" aria-disabled="true">Paper ↗<\/span>/,
+  );
+  assert.match(
+    html,
+    /<button class="is-paper" type="button" disabled="">Paper<\/button>/,
+  );
+  assert.doesNotMatch(html, /href="[^\"]*paper\.pdf"[^>]*>Paper/);
   assert.match(html, /Goal-State Prediction/);
   assert.match(html, /World-Model Reranking/);
   assert.match(pageSource, /<TrainingObjectiveGrid\s*\/>/);
