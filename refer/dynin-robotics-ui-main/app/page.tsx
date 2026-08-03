@@ -4271,9 +4271,7 @@ export default function Home() {
           })}
         </nav>
         <div className="header-links">
-          <span className="header-paper is-disabled" aria-disabled="true">
-            Paper ↗
-          </span>
+          <a href="https://dynin.ai/omni/">Dynin-Omni</a>
           <a href="https://aidas.snu.ac.kr" target="_blank" rel="noreferrer">
             AIDAS Lab
           </a>
@@ -4283,8 +4281,8 @@ export default function Home() {
       <main id="main-content">
         <section className="hero" id="top">
           <div className="hero__copy reveal is-visible">
-            <time className="hero__date" dateTime="2026-08-01">
-              August 01, 2026
+            <time className="hero__date" dateTime="2026-08-03">
+              August 03, 2026
             </time>
             <h1>Dynin-Robotics</h1>
             <p className="hero__summary">
@@ -4359,7 +4357,7 @@ export default function Home() {
             <SectionLead
               index="01"
               eyebrow="Overview"
-              title="Why Unify Semantics, Dynamics, and Control?"
+              title="Why Unified Models?"
               body="Language-oriented policies understand instructions, while video and world models predict how scenes change. Dynin-Robotics brings both abilities—and action generation—into one shared model."
             />
             <ParadigmFigure />

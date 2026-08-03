@@ -229,7 +229,7 @@ test("exports the complete Dynin-Robotics landing page", async () => {
     /\.section\.section--project-overview \{[\s\S]*?padding-top: 28px;/,
   );
   assert.match(html, /aria-label="Robot capability"/);
-  assert.match(html, /Why Unify Semantics, Dynamics, and Control\?/);
+  assert.match(html, /Why Unified Models\?/);
   assert.match(html, /id="capabilities"/);
   const capabilitiesStart = html.indexOf('id="capabilities"');
   const capabilitiesEnd = html.indexOf('id="model"', capabilitiesStart);
@@ -1663,7 +1663,11 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.doesNotMatch(html, /6 Inference Modes|Multi-Stage Pipeline/);
   assert.match(
     html,
-    /<span class="header-paper is-disabled" aria-disabled="true">Paper ↗<\/span>/,
+    /<a href="https:\/\/dynin\.ai\/omni\/">Dynin-Omni<\/a>/,
+  );
+  assert.match(
+    html,
+    /<time class="hero__date" dateTime="2026-08-03">August 03, 2026<\/time>/,
   );
   assert.match(
     html,
