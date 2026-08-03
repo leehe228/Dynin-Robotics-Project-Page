@@ -1663,7 +1663,15 @@ test("exports the complete Dynin-Robotics landing page", async () => {
   assert.doesNotMatch(html, /6 Inference Modes|Multi-Stage Pipeline/);
   assert.match(
     html,
-    /<a href="https:\/\/dynin\.ai\/omni\/">Dynin-Omni<\/a>/,
+    /<a href="https:\/\/dynin\.ai\/omni\/">Dynin-Omni<span class="header-link__arrow" aria-hidden="true">↗<\/span><\/a>/,
+  );
+  assert.match(
+    html,
+    /<a href="https:\/\/aidas\.snu\.ac\.kr" target="_blank" rel="noreferrer">AIDAS Lab<span class="header-link__arrow" aria-hidden="true">↗<\/span><\/a>/,
+  );
+  assert.match(
+    css,
+    /\.header-link__arrow \{[\s\S]*?display: inline-block;[\s\S]*?margin-left: 0\.28em;[\s\S]*?font-size: 0\.92em;[\s\S]*?line-height: 1;/,
   );
   assert.match(
     html,

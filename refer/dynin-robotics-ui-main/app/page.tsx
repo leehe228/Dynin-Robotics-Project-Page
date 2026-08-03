@@ -4271,9 +4271,17 @@ export default function Home() {
           })}
         </nav>
         <div className="header-links">
-          <a href="https://dynin.ai/omni/">Dynin-Omni</a>
+          <a href="https://dynin.ai/omni/">
+            Dynin-Omni
+            <span className="header-link__arrow" aria-hidden="true">
+              ↗
+            </span>
+          </a>
           <a href="https://aidas.snu.ac.kr" target="_blank" rel="noreferrer">
             AIDAS Lab
+            <span className="header-link__arrow" aria-hidden="true">
+              ↗
+            </span>
           </a>
         </div>
       </header>
